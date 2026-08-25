@@ -87,7 +87,7 @@ check(decision_of(out) == "escalate", "Schreiben an settings.json muss escalate 
 code, out, _ = run_hook("policy_guard.py", {
     "tool_name": "Write",
     "tool_input": {
-        "file_path": r"C:\Users\Kevin\Documents\Obsidian Vault\03 Bereiche\test.md"
+        "file_path": str(Path.home() / "Documents" / "Obsidian Vault" / "03 Bereiche" / "test.md")
     },
 })
 check(decision_of(out) == "deny", "Direktes Schreiben in den Vault muss deny ergeben")

@@ -1,6 +1,6 @@
 """notify — lokale Windows-Benachrichtigung ohne externe Abhängigkeit.
 
-Genutzt für den Codex-Failover: Kevin soll mitbekommen, wenn Codex als
+Genutzt für den Codex-Failover: der Benutzer soll mitbekommen, wenn Codex als
 Ersatz-Main übernimmt, auch wenn dabei keine Claude-Code-Session läuft, die
 es ihm sagen könnte. Rein lokal am Rechner - kein Cloud- oder Handy-Push,
 den gibt es in diesem System nicht (siehe Architekturplan zum Codex-Takeover).

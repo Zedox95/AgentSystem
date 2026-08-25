@@ -46,7 +46,7 @@
       "env": {
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
-        "AGENTSYSTEM_VAULT": "C:\\Users\\Kevin\\Documents\\Obsidian Vault"
+        "AGENTSYSTEM_VAULT": "C:\\Users\\YOURUSERNAME\\Documents\\Obsidian Vault"
       }
     }
   }

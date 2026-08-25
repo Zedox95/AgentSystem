@@ -1,6 +1,6 @@
 ---
 name: knowledge-review
-description: Prüft vor COMMITTED automatisch, ob eine abgeschlossene AgentSystem-Aufgabe dauerhaft relevantes Wissen für Kevins Obsidian-Vault erzeugt hat, dedupliziert es über die bestehende Entity-Suche und dokumentiert entweder captured, deferred oder none. Für jeden formalen Task Contract nach Objective Tests und Verifier-PASS ausführen; das Commit-Gate blockiert ohne diese Prüfung.
+description: Prüft vor COMMITTED automatisch, ob eine abgeschlossene AgentSystem-Aufgabe dauerhaft relevantes Wissen für den verwalteten Obsidian-Vault erzeugt hat, dedupliziert es über die bestehende Entity-Suche und dokumentiert entweder captured, deferred oder none. Für jeden formalen Task Contract nach Objective Tests und Verifier-PASS ausführen; das Commit-Gate blockiert ohne diese Prüfung.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob, Write
 ---
 

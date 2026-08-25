@@ -23,7 +23,7 @@ from .contracts import (
 )
 
 DEFAULT_VAULT = Path(os.environ.get(
-    "AGENTSYSTEM_VAULT", r"C:\Users\Kevin\Documents\Obsidian Vault"
+    "AGENTSYSTEM_VAULT", str(Path.home() / "Documents" / "Obsidian Vault")
 ))
 
 _MANAGED_START = "<!-- agentsystem:facts:start -->"

@@ -13,7 +13,7 @@ from pathlib import Path
 # mitgeprüft, damit das Umbiegen von AGENTSYSTEM_ROOT den Schutz nicht aushebelt.
 DEFAULT_ROOT = Path(r"C:\AgentSystem")
 DEFAULT_VAULT_ROOT = Path(os.environ.get(
-    "AGENTSYSTEM_VAULT", r"C:\Users\Kevin\Documents\Obsidian Vault"
+    "AGENTSYSTEM_VAULT", str(Path.home() / "Documents" / "Obsidian Vault")
 ))
 
 # Erlaubt es, das System für Tests an einen anderen Ort zu legen.
@@ -100,7 +100,7 @@ def is_control_plane(path: str | Path) -> bool:
 
 
 def is_vault_path(path: str | Path) -> bool:
-    """True for direct model-file writes into Kevin's Obsidian vault."""
+    """True for direct model-file writes into the managed Obsidian vault."""
     try:
         candidate = Path(path).resolve()
         candidate.relative_to(DEFAULT_VAULT_ROOT.resolve())

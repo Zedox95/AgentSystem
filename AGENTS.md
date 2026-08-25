@@ -93,7 +93,7 @@ bereit, statt voneinander abweichende Policies zu pflegen:
   `~/.claude/agents` sind Junctions auf `.claude/skills` und `.claude/agents`; die Benutzer-Settings
   laden die absoluten Hookpfade und das Codex-Plugin im User-Scope.
 - **Codex:** `~/.codex/AGENTS.md` ist ein Hardlink auf diese Datei; `~/.agents/skills` ist eine
-  Junction auf die zentrale Skill-Sammlung. Das persönliche Plugin `kevin-agent-system@personal`
+  Junction auf die zentrale Skill-Sammlung. Das persönliche Plugin `agent-system@personal`
   liefert den portablen Einstieg und Codex-kompatible Hooks. Neue oder geänderte Hook-Hashes müssen
   in `/hooks` geprüft und vertraut werden; eine dauerhafte Trust-Umgehung ist verboten.
 - **ChatGPT:** Kontoweite benutzerdefinierte Anweisungen tragen den portablen Kern in neue Chats.
@@ -268,18 +268,18 @@ Zu jeder Erfahrung gehört ein Environment Fingerprint (Windows-Build, Versionen
 Werkzeuge, API-Versionen). Alte Erfahrung wird nur bevorzugt, wenn der Environment Match
 ausreicht.
 
-**Obsidian-Vault als persönliches Gedächtnis des Benutzers.** Der Vault unter
-`C:\Users\Kevin\Documents\Obsidian Vault` ist Kevins zweites Gehirn, keine Kopie dieser Policy.
+**Obsidian-Vault als persönliches Gedächtnis des Benutzers.** Der konfigurierte Vault
+(`AGENTSYSTEM_VAULT`) ist das zweite Gehirn des Benutzers, keine Kopie dieser Policy.
 Während längerer Aufgaben und nicht erst am Ende einer Session von sich aus prüfen, ob etwas
 entstanden ist, das dort hingehört — abgeschlossene Projektschritte, Entscheidungen mit Begründung,
 neue dauerhaft verwaltete Systeme, offene Punkte für die nächste Session. Nicht jede Kleinigkeit,
 aber auch nicht nur auf ausdrückliche Anweisung warten. Struktur, Dateibenennung und sonstige
 Schreibregeln stehen in der dortigen `CLAUDE.md` und gelten unverändert; diese Datei hier bleibt für
 den Vault maßgeblich nur für das folgende Statusmodell und für alles rund um `C:\AgentSystem` selbst,
-nicht für Kevins persönliche Notizen.
+nicht für die persönlichen Notizen des Benutzers.
 
 **Statusmodell für automatisch geschriebenes Wissen.** Schreibt ein Agent produktives Faktenwissen in
-den Vault (Systeme, Geräte, Projekte, Entscheidungen — nicht Kevins private Notizen), bekommt der
+den Vault (Systeme, Geräte, Projekte, Entscheidungen — nicht die privaten Notizen des Benutzers), bekommt der
 Eintrag ein YAML-Frontmatter mit mindestens `type`, `entity`, `status`, `confidence`, `source_type`,
 `valid_from`, `last_verified`. Status ist eines von: `current` · `planned` · `tested` · `historical` ·
 `superseded` · `rejected` · `needs_review` · `hypothesis`. Eine unbelegte Vermutung wird als

@@ -40,7 +40,7 @@ DENY_CASES = [
     ("PowerShell", "Clear-Disk -Number 1"),
     ("Bash", "git push --force origin main"),
     ("Bash", "git reset --hard HEAD~5"),
-    ("PowerShell", "Remove-LocalUser -Name Kevin"),
+    ("PowerShell", "Remove-LocalUser -Name Testuser"),
     ("Bash", "qm destroy 103"),
     ("Bash", "DROP DATABASE panel;"),
     ("PowerShell", "setx OPENAI_API_KEY sk-abc123"),

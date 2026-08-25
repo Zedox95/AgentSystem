@@ -77,10 +77,11 @@ $backslashOld = 'C:\\AgentSystem'
 $backslashNew = ($RepoRoot -replace '\\', '\\')
 $settingsText = $settingsText.Replace($forwardOld, $forwardNew).Replace($backslashOld, $backslashNew)
 
-# DENY-/ALLOW-Regeln, die auf Kevins Windows-Benutzerprofil zeigen (Credential-
-# Dateien, Standard-Vault-Pfad), an den tatsaechlich installierenden Benutzer
-# anpassen - sonst schuetzen die DENY-Regeln das falsche Profil.
-$settingsText = $settingsText.Replace('C:\\Users\\Kevin\\', "C:\\Users\\$env:USERNAME\\")
+# DENY-/ALLOW-Regeln, die als Vorlage auf einen Platzhalter-Benutzernamen
+# zeigen (Credential-Dateien, Standard-Vault-Pfad), an den tatsaechlich
+# installierenden Benutzer anpassen - sonst schuetzen die DENY-Regeln das
+# falsche Profil.
+$settingsText = $settingsText.Replace('C:\\Users\\YOURUSERNAME\\', "C:\\Users\\$env:USERNAME\\")
 
 Set-Utf8NoBom -Path $SettingsPath -Content $settingsText
 Write-Host "settings.json: Hook-Pfade und AGENTSYSTEM_ROOT angepasst." -ForegroundColor Green
