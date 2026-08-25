@@ -12,7 +12,9 @@ from pathlib import Path
 # Der feste Installationsort. Er wird für den Control-Plane-Schutz immer
 # mitgeprüft, damit das Umbiegen von AGENTSYSTEM_ROOT den Schutz nicht aushebelt.
 DEFAULT_ROOT = Path(r"C:\AgentSystem")
-DEFAULT_VAULT_ROOT = Path(r"C:\Users\Kevin\Documents\Obsidian Vault")
+DEFAULT_VAULT_ROOT = Path(os.environ.get(
+    "AGENTSYSTEM_VAULT", r"C:\Users\Kevin\Documents\Obsidian Vault"
+))
 
 # Erlaubt es, das System für Tests an einen anderen Ort zu legen.
 ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", str(DEFAULT_ROOT))).resolve()

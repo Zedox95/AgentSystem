@@ -103,9 +103,38 @@ Details, CLI-Befehle und Sicherheitsgrenzen in
 
 ## Installation
 
-Vieles davon kann eine KI-Sitzung selbst erledigen (Pakete installieren,
-Dateien anpassen). Diese Schritte nicht — sie sind entweder Policy oder
-technisch nicht delegierbar:
+```powershell
+git clone https://github.com/KevinTi95/AgentSystem.git
+cd AgentSystem
+.\setup.ps1
+```
+
+`setup.ps1` passt die fest verdrahteten Pfade an den tatsächlichen Klon-Ort
+an (egal wo du klonst) und fragt der Reihe nach:
+
+- **Second Brain / Obsidian** — bestehenden Vault-Pfad angeben, oder leer
+  lassen und einen neuen Vault mit der erwarteten Ordnerstruktur anlegen
+  lassen. Nein → der `shared-memory`-MCP-Server wird aus `.mcp.json` entfernt.
+- **UFO² (Windows-GUI-Automatisierung)** — Pfad zu einer bestehenden
+  UFO²-Installation. Nein → der `ufo`-MCP-Server wird entfernt, der Skill
+  `ufo-windows` bleibt ungenutzt.
+- **Playwright (Browser-Automatisierung)** — bei Ja installiert das Skript
+  `npm install` und lädt Chromium herunter. Nein → der `playwright`-Eintrag
+  wird entfernt.
+- **Codex-Anbindung** — bei Ja bekommst du die drei nötigen Schritte im
+  Terminal genannt (`/plugin marketplace add`, `/plugin install`,
+  `/codex:setup`); das Skript selbst installiert keine Claude-Code-Plugins.
+
+Alle vier Fragen mit Nein/Enter beantwortet ergibt ein lauffähiges System
+ganz ohne die optionalen Komponenten. Nicht-interaktiv geht es auch, z. B.
+für Skripte:
+
+```powershell
+.\setup.ps1 -VaultPath 'D:\Notizen\Vault' -InstallPlaywright:$true -SkipUfo -SkipCodexHint
+```
+
+**Was der Installer nicht abnehmen kann** — Policy oder technische Grenze,
+kein Nachlässigkeitsfehler:
 
 1. **Anmeldungen selbst durchführen:** Claude Code beim Anthropic-Account,
    Codex-CLI bei ChatGPT (`authMethod: chatgpt`), ggf. `gh auth login` bei
@@ -116,17 +145,8 @@ technisch nicht delegierbar:
    sind nur die Abos (Claude Pro/Code, ChatGPT Plus), keine Pay-as-you-go-API.
 3. **Projektvertrauen einmalig bestätigen**, wenn Claude Code oder das
    Codex-Plugin beim ersten Öffnen nach Hooks/`settings.json` fragt.
-4. **Feste Pfade prüfen.** Etliche Stellen — u. a. `.claude/settings.json`
-   (Hook-Befehle) und `.mcp.json` (MCP-Server-Kommandos) — verweisen fest auf
-   `C:\AgentSystem`, die UFO-Adapter zusätzlich auf `C:\UFO`. Am einfachsten:
-   das Repo exakt dorthin klonen. Ein anderer Pfad funktioniert auch, verlangt
-   aber, diese Stellen anzupassen — eine reine Pfadentscheidung, die dir
-   gehört, auch wenn eine KI-Sitzung die Änderung selbst ausführen kann.
-5. **Optionale Komponenten selbst bereitstellen**, falls gebraucht: ein
-   eigenes [UFO²](https://github.com/microsoft/UFO) für Windows-GUI-Aufgaben,
-   ein eigener Obsidian-Vault für den Second-Brain-Teil (Pfad über
-   `AGENTSYSTEM_VAULT`), Zugangsdaten für Weboberflächen, die der
-   `browser-admin`-Skill anspricht.
+4. Zugangsdaten für Weboberflächen, die der `browser-admin`-Skill anspricht —
+   tippst grundsätzlich du selbst.
 
 Danach:
 

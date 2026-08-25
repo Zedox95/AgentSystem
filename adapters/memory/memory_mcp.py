@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Callable
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", r"C:\AgentSystem"))
 sys.path.insert(0, str(ROOT / "bin"))
 
 from agentsys import knowledge, ledger  # noqa: E402

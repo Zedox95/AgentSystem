@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", r"C:\AgentSystem"))
 sys.path.insert(0, str(ROOT / "bin"))
 
 from agentsys import knowledge, ledger  # noqa: E402
