@@ -1,0 +1,53 @@
+{
+  "$comment": [
+    "MCP-Server für EXPLORATIVES Arbeiten. Für bekannte, wiederholbare Abläufe",
+    "sind die CLIs der bessere Weg: adapters/ufo/ufoctl.py und",
+    "adapters/playwright/pwctl.mjs. Sie sind deterministisch skriptbar, einzeln",
+    "verifizierbar und erzeugen kleinere Kontextausgaben.",
+    "",
+    "Beide Server halten Zustand über viele Schritte hinweg - genau darin liegt",
+    "ihr Nutzen, wenn man sich erst durch eine unbekannte Oberfläche tasten muss.",
+    "",
+    "Das Browserprofil unter state/browser-profiles/mcp enthält Cookies und",
+    "Sitzungsdaten und ist damit ein Secret nach AGENTS.md Abschnitt 20:",
+    "ausserhalb der Versionskontrolle, nie protokolliert."
+  ],
+
+  "mcpServers": {
+    "ufo": {
+      "command": "C:\\UFO\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\AgentSystem\\adapters\\ufo\\ufo_mcp.py"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+        "UFO_ROOT": "C:\\UFO"
+      }
+    },
+
+    "playwright": {
+      "command": "node",
+      "args": [
+        "C:\\AgentSystem\\adapters\\playwright\\node_modules\\@playwright\\mcp\\cli.js",
+        "--user-data-dir", "C:\\AgentSystem\\state\\browser-profiles\\mcp",
+        "--output-dir", "C:\\AgentSystem\\logs\\playwright-mcp",
+        "--browser", "chromium",
+        "--block-service-workers",
+        "--console-level", "warning"
+      ]
+    },
+
+    "shared-memory": {
+      "command": "python",
+      "args": [
+        "C:\\AgentSystem\\adapters\\memory\\memory_mcp.py"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+        "AGENTSYSTEM_VAULT": "C:\\Users\\Kevin\\Documents\\Obsidian Vault"
+      }
+    }
+  }
+}

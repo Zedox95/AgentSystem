@@ -1,0 +1,262 @@
+{
+  "env": {
+    "AGENTSYSTEM_ROOT": "C:\\AgentSystem",
+    "CODEX_API_KEY": "",
+    "OPENAI_API_KEY": "",
+    "PYTHONIOENCODING": "utf-8",
+    "PYTHONUTF8": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git remote -v*)",
+      "Bash(git rev-parse*)",
+      "Bash(ls*)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(df *)",
+      "Bash(du *)",
+      "Bash(docker ps*)",
+      "Bash(docker images*)",
+      "Bash(docker inspect*)",
+      "Bash(systemctl status*)",
+      "Bash(journalctl*)",
+      "Bash(qm list*)",
+      "Bash(qm config*)",
+      "Bash(qm status*)",
+      "Bash(pct list*)",
+      "Bash(python C:\\AgentSystem\\tests\\*)",
+      "PowerShell(Get-Service*)",
+      "PowerShell(Get-Process*)",
+      "PowerShell(Get-ChildItem*)",
+      "PowerShell(Get-Content*)",
+      "PowerShell(Get-Item*)",
+      "PowerShell(Get-ItemProperty*)",
+      "PowerShell(Get-CimInstance*)",
+      "PowerShell(Get-Command*)",
+      "PowerShell(Get-NetAdapter*)",
+      "PowerShell(Get-NetIPAddress*)",
+      "PowerShell(Get-NetTCPConnection*)",
+      "PowerShell(Get-NetRoute*)",
+      "PowerShell(Get-NetFirewallRule*)",
+      "PowerShell(Get-ScheduledTask*)",
+      "PowerShell(Get-WinEvent*)",
+      "PowerShell(Get-PnpDevice*)",
+      "PowerShell(Get-Volume*)",
+      "PowerShell(Get-Disk*)",
+      "PowerShell(Get-FileHash*)",
+      "PowerShell(Get-Acl*)",
+      "PowerShell(Test-Path*)",
+      "PowerShell(Test-NetConnection*)",
+      "Read(C:\\AgentSystem\\**)",
+      "Read(C:\\UFO\\**)",
+      "Read(C:\\Users\\Kevin\\Documents\\Obsidian Vault\\**)",
+      "mcp__ufo__ui_get_desktop_app_info",
+      "mcp__ufo__ui_get_desktop_app_target_info",
+      "mcp__ufo__ui_get_app_window_info",
+      "mcp__ufo__ui_get_app_window_controls_info",
+      "mcp__ufo__ui_get_app_window_controls_target_info",
+      "mcp__ufo__ui_get_ui_tree",
+      "mcp__ufo__host_select_application_window",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_tabs"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(mkfs*)",
+      "Bash(dd if=* of=/dev/*)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -fd*)",
+      "Bash(userdel *)",
+      "Bash(deluser *)",
+      "Bash(qm destroy *)",
+      "Bash(pct destroy *)",
+      "PowerShell(Format-Volume*)",
+      "PowerShell(Clear-Disk*)",
+      "PowerShell(Initialize-Disk*)",
+      "PowerShell(Remove-Partition*)",
+      "PowerShell(Clear-RecycleBin*)",
+      "PowerShell(Remove-LocalUser*)",
+      "PowerShell(bcdedit*)",
+      "PowerShell(setx ANTHROPIC_API_KEY*)",
+      "PowerShell(setx OPENAI_API_KEY*)",
+      "PowerShell(setx CODEX_API_KEY*)",
+      "Read(C:\\Users\\Kevin\\.claude\\.credentials.json)",
+      "Read(C:\\Users\\Kevin\\.codex\\auth.json)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Write(C:\\Windows\\**)",
+      "Write(C:\\Program Files\\**)",
+      "Edit(C:\\Windows\\**)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(winget *)",
+      "Bash(npm install -g *)",
+      "Bash(pip install *)",
+      "Bash(docker system prune*)",
+      "Bash(qm set *)",
+      "Bash(pct set *)",
+      "PowerShell(Stop-Service*)",
+      "PowerShell(Set-Service*)",
+      "PowerShell(Restart-Service*)",
+      "PowerShell(Set-ItemProperty*)",
+      "PowerShell(New-ItemProperty*)",
+      "PowerShell(Remove-ItemProperty*)",
+      "PowerShell(New-NetFirewallRule*)",
+      "PowerShell(Set-NetFirewallRule*)",
+      "PowerShell(Remove-NetFirewallRule*)",
+      "PowerShell(pnputil*)",
+      "PowerShell(Restart-Computer*)",
+      "PowerShell(Stop-Computer*)",
+      "PowerShell(Register-ScheduledTask*)",
+      "PowerShell(Start-Process * -Verb RunAs*)",
+      "Write(C:\\AgentSystem\\.claude\\**)",
+      "Write(C:\\AgentSystem\\bin\\**)",
+      "Write(C:\\AgentSystem\\AGENTS.md)",
+      "Edit(C:\\AgentSystem\\.claude\\**)",
+      "Edit(C:\\AgentSystem\\bin\\**)",
+      "Edit(C:\\AgentSystem\\AGENTS.md)",
+      "mcp__ufo__app_click_input",
+      "mcp__ufo__app_set_edit_text",
+      "mcp__ufo__app_keyboard_input",
+      "mcp__ufo__app_click_on_coordinates",
+      "mcp__ufo__app_drag_on_coordinates",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_file_upload"
+    ],
+    "defaultMode": "default"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/session_start.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/policy_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/permission_request.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/tool_failure.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/task_created.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/task_completed.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "windows-agent|infrastructure-agent|browser-agent|gaming-agent|implementation-agent|verification-agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/subagent_stop.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "user_settings|project_settings|local_settings|skills",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/config_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/prompt_router.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "$comment": [
+    "Control Plane des Agentensystems. Änderungen hier laufen über den",
+    "Wartungsablauf: Baseline, Backup, Änderung, Regression, Verifikation, Commit.",
+    "Der ConfigChange-Hook blockiert beiläufige Änderungen an hooks/permissions/env.",
+    "Hook-Pfade sind absolut, weil die Expansion von $CLAUDE_PROJECT_DIR unter",
+    "Windows je nach Shell abweichen kann und Verlässlichkeit hier Vorrang hat."
+  ]
+}

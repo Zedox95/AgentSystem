@@ -1,0 +1,31 @@
+# Laufzeitzustand: gehört nicht in die Versionskontrolle.
+state/ledger.sqlite
+state/ledger.sqlite-wal
+state/ledger.sqlite-shm
+state/checkpoint.json
+state/runs/
+state/locks/
+state/baselines/
+state/experiences/
+logs/
+state/browser-profiles/
+adapters/playwright/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Lokale Übersteuerungen enthalten oft Pfade oder Zugangswege.
+.claude/settings.local.json
+
+# Niemals eingecheckt - siehe AGENTS.md Abschnitt 20.
+*.env
+.env
+.env.*
+*.key
+*.pem
+id_rsa
+id_ed25519
+credentials.json
+auth.json

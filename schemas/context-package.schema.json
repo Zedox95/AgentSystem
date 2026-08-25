@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsystem.local/schemas/context-package-v1.json",
+  "title": "Context Package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "package_id", "query", "token_budget", "estimated_tokens", "items", "conflicts", "truncated", "generated_utc"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "package_id": {"type": "string", "pattern": "^ctx-[0-9a-f]{16}$"},
+    "query": {"type": "string", "minLength": 1},
+    "token_budget": {"type": "integer", "minimum": 128, "maximum": 100000},
+    "estimated_tokens": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "conflicts": {"type": "array", "items": {"type": "string"}},
+    "generated_utc": {"type": "string", "format": "date-time"},
+    "items": {"type": "array", "items": {"type": "object", "required": ["source_path", "source_sha256", "excerpt", "score"], "properties": {"source_path": {"type": "string"}, "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "excerpt": {"type": "string"}, "score": {"type": "integer"}, "entity": {"type": ["string", "null"]}, "status": {"type": ["string", "null"]}, "last_verified": {"type": ["string", "null"]}}}}
+  }
+}

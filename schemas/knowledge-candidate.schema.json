@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsystem.local/schemas/knowledge-candidate-v1.json",
+  "title": "Knowledge Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_id", "entity", "fact_key", "value", "status", "confidence", "source_type", "source_ref", "valid_from", "last_verified", "created_by", "created_utc"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "candidate_id": {"type": "string", "pattern": "^kc-[0-9a-f]{16}$"},
+    "entity": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]{1,127}$"},
+    "fact_key": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]{1,127}$"},
+    "value": {},
+    "status": {"enum": ["current", "planned", "tested", "historical", "superseded", "rejected", "needs_review", "hypothesis"]},
+    "confidence": {"enum": ["high", "medium", "low"]},
+    "source_type": {"enum": ["measurement", "user_confirmed", "local_config", "official_docs", "expert_source", "vendor", "community", "agent_inference", "hypothesis"]},
+    "source_ref": {"type": "string", "minLength": 1},
+    "valid_from": {"type": "string", "format": "date"},
+    "last_verified": {"type": "string", "format": "date"},
+    "project": {"type": ["string", "null"]},
+    "target_note": {"type": ["string", "null"]},
+    "created_by": {"type": "string", "minLength": 1},
+    "created_utc": {"type": "string", "format": "date-time"}
+  }
+}

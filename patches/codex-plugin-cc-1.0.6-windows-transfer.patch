@@ -1,0 +1,28 @@
+--- plugins/codex/scripts/lib/codex.mjs
++++ plugins/codex/scripts/lib/codex.mjs
+@@
++function normalizeImportPath(value) {
++  if (typeof value !== "string" || value === "") return null;
++  const stripped = value.replace(/^\\\\\?\\UNC\\/i, "\\\\").replace(/^\\\\\?\\/, "");
++  const normalized = path.normalize(stripped);
++  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
++}
+@@
+-  const match = records
+-    .filter((record) =>
+-      record?.source_path === canonicalSource &&
+-      record?.content_sha256 === contentSha256 &&
+-      typeof record?.imported_thread_id === "string")
+-    .at(-1);
++  const candidates = records.filter((record) =>
++    typeof record?.imported_thread_id === "string" &&
++    normalizeImportPath(record?.source_path) === normalizeImportPath(canonicalSource));
++  const match = candidates.filter((record) => record?.content_sha256 === contentSha256).at(-1)
++    ?? candidates.at(-1);
+
+Purpose: OpenAI codex-plugin-cc 1.0.6 records imported Windows paths with the
+Rust verbatim prefix (\\?\), while Node realpathSync omits it. The live Claude
+JSONL may also grow between import and lookup, invalidating the strict hash.
+The patch normalizes paths and treats the hash as a preference. Remove this
+patch only after a newer official plugin version passes the real Windows
+transfer test in tests/test_codex_plugin.py.

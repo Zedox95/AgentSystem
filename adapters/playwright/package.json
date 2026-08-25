@@ -1,0 +1,14 @@
+{
+  "name": "agentsystem-playwright",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browser-Aktionsschicht des Agentensystems: pwctl als CLI fuer wiederholbare Ablaeufe, @playwright/mcp fuer exploratives Arbeiten. Lokale, versionierte Installation statt globalem latest.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "playwright": "1.62.1",
+    "@playwright/mcp": "0.0.79"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsystem.local/schemas/skill-candidate-v1.json",
+  "title": "Skill Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_id", "name", "rationale", "source_experience_keys", "target_scope", "status", "created_utc"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "candidate_id": {"type": "string"},
+    "name": {"type": "string"},
+    "rationale": {"type": "string", "minLength": 1},
+    "source_experience_keys": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "target_scope": {"const": "skill"},
+    "status": {"const": "CANDIDATE"},
+    "created_utc": {"type": "string", "format": "date-time"}
+  }
+}

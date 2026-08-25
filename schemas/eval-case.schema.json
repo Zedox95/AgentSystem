@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsystem.local/schemas/eval-case-v1.json",
+  "title": "Eval Case v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "eval_id", "task_class", "prompt", "risk_class", "must_include", "must_not_include", "tags"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "eval_id": {"type": "string"},
+    "task_class": {"type": "string"},
+    "prompt": {"type": "string", "minLength": 1},
+    "risk_class": {"enum": ["R0", "R1", "R2", "R3"]},
+    "must_include": {"type": "array", "items": {"type": "string"}},
+    "must_not_include": {"type": "array", "items": {"type": "string"}},
+    "tags": {"type": "array", "items": {"type": "string"}}
+  }
+}

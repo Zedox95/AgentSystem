@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentsystem.local/schemas/metric-event-v1.json",
+  "title": "Metric Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_class", "outcome", "first_pass", "user_corrected", "critical_error", "knowledge_reused", "regression_recurrence", "tool_calls", "duration_ms", "recorded_utc"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "task_class": {"type": "string"},
+    "outcome": {"enum": ["PASS", "FAIL", "INCONCLUSIVE", "ROLLED_BACK"]},
+    "first_pass": {"type": "boolean"},
+    "user_corrected": {"type": "boolean"},
+    "critical_error": {"type": "boolean"},
+    "knowledge_reused": {"type": "boolean"},
+    "regression_recurrence": {"type": "boolean"},
+    "tool_calls": {"type": "integer", "minimum": 0},
+    "duration_ms": {"type": "integer", "minimum": 0},
+    "task_id": {"type": ["string", "null"]},
+    "run_id": {"type": ["string", "null"]},
+    "recorded_utc": {"type": "string", "format": "date-time"}
+  }
+}
