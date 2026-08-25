@@ -37,7 +37,7 @@ CLAUDE.md               Claude-Code-spezifische Ergänzung, bindet AGENTS.md ein
 .claude/
   agents/                6 Subagenten (Windows, Infrastruktur, Browser, Gaming,
                           Implementierung, Verifikation)
-  skills/                 12 eigene Skills + Manifest übernommener externer Skills
+  skills/                 12 eigene Skills
   hooks/                  9 Hook-Skripte (SessionStart, PreToolUse, ConfigChange, ...)
   settings.json            Berechtigungen und Hook-Verdrahtung
 bin/
@@ -68,9 +68,10 @@ python bin/agentctl.py status
 python tests/run-all.py
 ```
 
-Öffne Claude Code mit diesem Verzeichnis als Projektverzeichnis — nur dort
-greifen Regeln, Agenten, Skills und Hooks. Details in der
-[Benutzeranleitung](docs/benutzeranleitung.md).
+Öffne Claude Code oder Codex mit diesem Verzeichnis als Projektverzeichnis —
+nur dort greifen Regeln, Agenten, Skills und Hooks. Details in der
+[Benutzeranleitung](docs/benutzeranleitung.md) und in
+[Globale Provider-Integration](docs/global-provider-integration.md).
 
 ## Lizenz
 
