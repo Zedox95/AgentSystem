@@ -101,7 +101,34 @@ Details, CLI-Befehle und Sicherheitsgrenzen in
 - Optional: [UFO²](https://github.com/microsoft/UFO) für Windows-GUI-
   Automatisierung, [Playwright](https://playwright.dev/) für Browser-Aufgaben
 
-## Los geht's
+## Installation
+
+Vieles davon kann eine KI-Sitzung selbst erledigen (Pakete installieren,
+Dateien anpassen). Diese Schritte nicht — sie sind entweder Policy oder
+technisch nicht delegierbar:
+
+1. **Anmeldungen selbst durchführen:** Claude Code beim Anthropic-Account,
+   Codex-CLI bei ChatGPT (`authMethod: chatgpt`), ggf. `gh auth login` bei
+   GitHub. Alles Browser-/Device-Code-Logins — kein Werkzeug dieses Systems
+   tippt Zugangsdaten.
+2. **Keine LLM-API-Keys setzen.** `.claude/settings.json` blockiert
+   `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`CODEX_API_KEY` absichtlich — nötig
+   sind nur die Abos (Claude Pro/Code, ChatGPT Plus), keine Pay-as-you-go-API.
+3. **Projektvertrauen einmalig bestätigen**, wenn Claude Code oder das
+   Codex-Plugin beim ersten Öffnen nach Hooks/`settings.json` fragt.
+4. **Feste Pfade prüfen.** Etliche Stellen — u. a. `.claude/settings.json`
+   (Hook-Befehle) und `.mcp.json` (MCP-Server-Kommandos) — verweisen fest auf
+   `C:\AgentSystem`, die UFO-Adapter zusätzlich auf `C:\UFO`. Am einfachsten:
+   das Repo exakt dorthin klonen. Ein anderer Pfad funktioniert auch, verlangt
+   aber, diese Stellen anzupassen — eine reine Pfadentscheidung, die dir
+   gehört, auch wenn eine KI-Sitzung die Änderung selbst ausführen kann.
+5. **Optionale Komponenten selbst bereitstellen**, falls gebraucht: ein
+   eigenes [UFO²](https://github.com/microsoft/UFO) für Windows-GUI-Aufgaben,
+   ein eigener Obsidian-Vault für den Second-Brain-Teil (Pfad über
+   `AGENTSYSTEM_VAULT`), Zugangsdaten für Weboberflächen, die der
+   `browser-admin`-Skill anspricht.
+
+Danach:
 
 ```bash
 python bin/agentctl.py status
