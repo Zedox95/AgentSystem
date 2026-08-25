@@ -104,7 +104,7 @@ Details, CLI-Befehle und Sicherheitsgrenzen in
 ## Installation
 
 ```powershell
-git clone https://github.com/KevinTi95/AgentSystem.git
+git clone https://github.com/Zedox95/AgentSystem.git
 cd AgentSystem
 .\setup.ps1
 ```
