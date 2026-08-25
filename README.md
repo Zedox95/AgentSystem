@@ -53,6 +53,22 @@ tests/                     Testsuiten, run-all.py
 docs/
 ```
 
+## Zweites Modell als Kontrolle und Übergabe
+
+Codex ist als zweites Frontier-Modell angebunden, nicht als Ersatz bei
+Kontingentende. Aus Claude Code heraus:
+
+- `/codex:rescue` — begrenzte Delegation einer Untersuchung oder eines Fixes,
+  Claude bleibt Lead
+- `/codex:review` — unabhängige Codex-Prüfung einer Änderung
+- `/codex:transfer` — vollständige Sitzungsübergabe: Ziel, bisheriger
+  Verlauf und Kontext gehen in einem Befehl an einen Codex-Thread über, der
+  danach mit `codex resume <thread-id>` fortgesetzt wird
+
+Kein Schritt davon setzt einen API-Key — alles läuft über die lokal
+angemeldete Codex-CLI. Details in AGENTS.md Abschnitt 4 und in
+[Systemdokumentation](docs/systemdokumentation.md).
+
 ## Voraussetzungen
 
 - Windows mit [Claude Code](https://claude.com/product/claude-code) und/oder
