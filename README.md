@@ -69,6 +69,30 @@ Kein Schritt davon setzt einen API-Key — alles läuft über die lokal
 angemeldete Codex-CLI. Details in AGENTS.md Abschnitt 4 und in
 [Systemdokumentation](docs/systemdokumentation.md).
 
+## Second Brain: lernendes, quellenbelegtes Wissen
+
+Das System merkt sich nicht einfach Chatverlauf. Neue Erkenntnisse laufen
+über einen kontrollierten Single-Writer-Pfad, bevor sie als Fakt gelten:
+
+```
+Beobachtung -> Knowledge Candidate -> Archivist-Prüfung -> verwaltete Notiz
+                                              |
+                  Nur-Lese-Suche -> Context Builder -> Quellenpaket
+```
+
+- Jeder Fakt startet als `pending`-Kandidat mit Quelle, Datei-Hash und
+  Vertrauensstufe — nie direkt als bestätigt.
+- Nur eine geprüfte Freigabe (`knowledge approve`) schreibt in den
+  Wissensspeicher; sie verlangt einen offenen Task, ein Entity-Lock und bei
+  bestehenden Notizen den aktuell gemessenen Hash.
+- Schwächere Quellen überschreiben stärkere nie — ältere Werte bleiben als
+  `superseded` erhalten statt gelöscht zu werden.
+- Vor jedem Task-Abschluss ist eine Knowledge Review Pflicht: `none`,
+  `captured` oder `deferred`, dokumentiert im Ledger.
+
+Details, CLI-Befehle und Sicherheitsgrenzen in
+[Second Brain](docs/second-brain-architecture.md).
+
 ## Voraussetzungen
 
 - Windows mit [Claude Code](https://claude.com/product/claude-code) und/oder
