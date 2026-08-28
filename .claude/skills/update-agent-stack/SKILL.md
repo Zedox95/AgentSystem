@@ -1,113 +1,113 @@
 ---
 name: update-agent-stack
-description: Führt ein Update einer Systemkomponente kontrolliert durch - Changelog prüfen, Relevanz bewerten, Known-Good festhalten, Backup, isolierter Test, Smoke Tests, Regressionslauf, Verifikation, dann übernehmen oder bei der Known-Good-Version bleiben. Einsetzen für Updates an Claude Code, Codex, UFO², Playwright, Node, Python, MCP-Servern oder am Agentensystem selbst.
+description: Performs an update of a system component in a controlled way - check the changelog, assess relevance, record a known-good state, back up, test in isolation, run smoke tests, run regression, verify, then adopt it or stay on the known-good version. Use for updates to Claude Code, Codex, UFO², Playwright, Node, Python, MCP servers, or the agent system itself.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Bash(python C:\AgentSystem\tests\*), Read, Grep, Glob
 ---
 
-# Kontrolliertes Update
+# Controlled update
 
-Kein blindes `latest`. Eine neue Version wird erst produktiv, wenn sie
-nachweislich **nicht schlechter** ist.
+No blind `latest`. A new version only becomes production once it's
+demonstrably **not worse**.
 
-## 1. Known-Good festhalten — vor allem anderen
+## 1. Record known-good — before anything else
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py env known-good --name pre-<komponente>-<datum>
+python C:\AgentSystem\bin\agentctl.py env known-good --name pre-<component>-<date>
 ```
 
-Damit ist der Rückweg definiert, bevor irgendetwas verändert wird. Ohne diesen
-Schritt gibt es später keinen Vergleichspunkt.
+This defines the way back before anything is changed. Without this step,
+there's no later comparison point.
 
-## 2. Changelog prüfen und Relevanz bewerten
+## 2. Check the changelog and assess relevance
 
-Lies den tatsächlichen Changelog der Zielversion, nicht die Werbeaussage.
-Frage konkret:
+Read the actual changelog of the target version, not the marketing claim.
+Ask specifically:
 
-- Behebt das Update ein Problem, das wir tatsächlich haben?
-- Gibt es Breaking Changes an Schnittstellen, die wir nutzen?
-- Ändern sich Konfigurationsschemata, Hook-Namen, CLI-Flags oder API-Verträge?
-- Sind gespeicherte `VERIFIED`-Erfahrungen betroffen?
+- Does the update fix a problem we actually have?
+- Are there breaking changes to interfaces we use?
+- Do configuration schemas, hook names, CLI flags, or API contracts change?
+- Are stored `VERIFIED` experiences affected?
 
-Ein Update ohne erkennbaren Nutzen für uns ist kein Grund für ein Update.
+An update with no discernible benefit to us is not a reason to update.
 
 ```bash
 python C:\AgentSystem\bin\agentctl.py exp stale
 ```
 
-zeigt, welche Erfahrungen durch eine Umgebungsänderung fraglich werden.
+shows which experiences become questionable due to an environment change.
 
 ## 3. Backup
 
-Ab R2: vollständiger Restore-Point der betroffenen Konfiguration mit
-SHA256-Manifest. Für `C:\AgentSystem` genügt ein sauberer Git-Stand — prüfe,
-dass `git status` leer ist, bevor du beginnst.
+From R2 up: a complete restore point of the affected configuration with a
+SHA256 manifest. For `C:\AgentSystem`, a clean git state is sufficient —
+check that `git status` is empty before you begin.
 
-## 4. Isoliert testen, wo möglich
+## 4. Test in isolation where possible
 
-Bevorzugt in einer Kopie, einer separaten venv, einem Worktree oder einer VM.
-Nicht jede Komponente lässt das zu — wenn nicht, sag es deutlich und behandle
-das Update entsprechend vorsichtiger.
+Preferably in a copy, a separate venv, a worktree, or a VM. Not every
+component allows this — if not, say so clearly and treat the update
+correspondingly more cautiously.
 
-## 5. Smoke Tests
+## 5. Smoke tests
 
-Die Komponente startet, meldet die erwartete Version, und ihre Kernfunktion
-läuft einmal durch. Für dieses System:
+The component starts, reports the expected version, and its core function
+runs through once. For this system:
 
 ```bash
 python C:\AgentSystem\bin\agentctl.py env show
 python C:\AgentSystem\bin\agentctl.py status
 ```
 
-## 6. Regressionslauf — Pflicht
+## 6. Regression run — mandatory
 
 ```bash
 python C:\AgentSystem\tests\run-all.py
 ```
 
-Regression ist erforderlich nach jeder Änderung an: Skill, Agent-Prompt,
-Adapter, Routing, Hook, Tool-Update, UFO-Update, Playwright-Update.
+Regression is required after any change to: skill, agent prompt, adapter,
+routing, hook, tool update, UFO update, Playwright update.
 
-Bewertet wird nicht nur „grün", sondern der Vergleich: Erfolgsrate, Laufzeit,
-Retries, Verification-Erfolg, Nebenwirkungen. Eine Version, die grün ist, aber
-messbar langsamer oder retry-anfälliger, ist kein Fortschritt.
+What's evaluated isn't just "green", but the comparison: success rate,
+runtime, retries, verification success, side effects. A version that's green
+but measurably slower or more retry-prone is not progress.
 
-## 7. Entscheiden
+## 7. Decide
 
-| Ergebnis | Entscheidung |
+| Result | Decision |
 |---|---|
-| Regression grün, keine Verschlechterung | übernehmen, neues Known-Good schreiben |
-| Regression grün, aber messbar schlechter | bei Known-Good bleiben, Befund dokumentieren |
-| Regression rot | zurückrollen, Ursache über `diagnose-failure` klären |
-| Breaking Change an genutzter Schnittstelle | erst Anpassung, dann erneute Regression |
+| Regression green, no regression in quality | adopt, write new known-good |
+| Regression green, but measurably worse | stay on known-good, document the finding |
+| Regression red | roll back, investigate root cause via `diagnose-failure` |
+| Breaking change to a used interface | fix first, then rerun regression |
 
-Bei Übernahme:
-
-```bash
-python C:\AgentSystem\bin\agentctl.py env known-good --name <komponente>-<version>
-```
-
-## 8. Betroffene Erfahrungen nachziehen
-
-Erfahrungen, deren `revalidate_when` durch das Update ausgelöst wurde, sind
-**nicht mehr `VERIFIED`**. Entweder neu bestätigen oder auf `DEPRECATED`
-setzen — stillschweigend weiterverwenden ist nicht zulässig.
+On adoption:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp deprecate --key <k> --method <m> --reason "Umgebung geändert durch Update auf <version>"
+python C:\AgentSystem\bin\agentctl.py env known-good --name <component>-<version>
 ```
 
-## Sonderfall: Änderung an der Control Plane
+## 8. Follow up on affected experiences
 
-`settings.json`, `hooks/`, `bin/agentsys/` und die Sicherheitsabschnitte von
-`AGENTS.md` sind besonders geschützt. Der `ConfigChange`-Hook blockiert
-beiläufige Änderungen. Ein bewusstes Update dort läuft über genau diesen
-Ablauf und endet mit einem eigenen Git-Commit, der die Begründung enthält.
+Experiences whose `revalidate_when` was triggered by the update are **no
+longer `VERIFIED`**. Either reconfirm them or set them to `DEPRECATED` —
+silently continuing to use them is not permitted.
 
-Nach einer Hook-Änderung ist `tests/test_hooks.py` zwingend — die Hooks werden
-dort als echte Prozesse aufgerufen, nicht nur importiert.
+```bash
+python C:\AgentSystem\bin\agentctl.py exp deprecate --key <k> --method <m> --reason "Environment changed by update to <version>"
+```
 
-## Ergebnis
+## Special case: change to the control plane
 
-Melde: alte und neue Version, geprüfter Changelog-Befund, Testergebnisse im
-Vergleich, Entscheidung mit Begründung, neuer Known-Good-Stand, und welche
-Erfahrungen nachgezogen wurden.
+`settings.json`, `hooks/`, `bin/agentsys/`, and the security sections of
+`AGENTS.md` are especially protected. The `ConfigChange` hook blocks
+incidental changes. A deliberate update there follows exactly this process
+and ends with its own git commit containing the reasoning.
+
+After any hook change, `tests/test_hooks.py` is mandatory — the hooks are
+invoked there as real processes, not just imported.
+
+## Result
+
+Report: old and new version, changelog findings checked, test results
+compared, decision with reasoning, new known-good state, and which
+experiences were followed up on.

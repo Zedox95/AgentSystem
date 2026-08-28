@@ -1,4 +1,4 @@
-"""Tests fuer read-only Drift-, Lock- und Checkpoint-Erkennung."""
+"""Tests for read-only drift, lock, and checkpoint detection."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-supervisor-"))
 SYSTEM = TMP / "system"
 VAULT = TMP / "vault"
@@ -29,13 +29,13 @@ def check(condition: bool, message: str) -> None:
 
 
 task_id = ledger.create_task(
-    "Terminaler Testtask", "R1",
+    "Terminal test task", "R1",
     target_resource="test:terminal-task",
-    desired_state="Verifiziert abgeschlossen",
-    planned_method="Isolierten Testzustand erzeugen",
-    alternative_method="Testzustand verwerfen",
-    acceptance_criteria="PASS-Run und Knowledge Review vorhanden",
-    rollback_plan="Temp-Verzeichnis entfernen",
+    desired_state="Verified and completed",
+    planned_method="Create isolated test state",
+    alternative_method="Discard the test state",
+    acceptance_criteria="PASS run and Knowledge Review present",
+    rollback_plan="Remove the temp directory",
 )
 for state in (
     "PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP",
@@ -43,16 +43,16 @@ for state in (
 ):
     ledger.set_state(task_id, state)
 run_id = ledger.start_run(
-    task_id, "supervisor-test", "Python", "isolierte Fixture erzeugen", "R1",
+    task_id, "supervisor-test", "Python", "create isolated fixture", "R1",
 )
 ledger.finish_run(
-    run_id, "PASS", change_summary="Terminalen Testtask erzeugt",
-    objective_tests="Isolierter Ledger-Test",
-    verification="PASS: Test-Fixture unabhängig vollständig",
+    run_id, "PASS", change_summary="Created terminal test task",
+    objective_tests="Isolated ledger test",
+    verification="PASS: test fixture independently complete",
 )
 knowledge.review_task(
     task_id, decision="none",
-    reason="Keine produktive Wissensänderung in der Test-Fixture",
+    reason="No productive knowledge change in the test fixture",
 )
 ledger.set_state(task_id, "COMMITTED")
 ledger.write_checkpoint({"task_id": task_id, "state": "RECEIVED", "goal": "kaputt Ã¼"})
@@ -73,9 +73,9 @@ paths.STATE_DIR.mkdir(parents=True, exist_ok=True)
     json.dumps({"router.md": "0" * 64}), encoding="utf-8",
 )
 
-# Die Fixture schreibt viele Ledger-Ereignisse. Vor der Read-only-Messung den
-# Test-WAL kontrolliert abschließen, damit nur Supervisor-Zugriffe verglichen
-# werden und keine verzögerte SQLite-Aufräumaktion.
+# The fixture writes many ledger events. Before the read-only measurement,
+# close the test WAL in a controlled way, so that only supervisor accesses
+# are compared and not some delayed SQLite cleanup action.
 with sqlite3.connect(paths.LEDGER_DB) as fixture_connection:
     fixture_connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 before = {str(path): path.stat().st_mtime_ns for path in SYSTEM.rglob("*") if path.is_file()}
@@ -85,14 +85,14 @@ by_name = {item["check"]: item for item in report["checks"]}
 changed_files = sorted(path for path in set(before) | set(after)
                        if before.get(path) != after.get(path))
 check(before == after and report["read_only"],
-      f"Supervisor muss read-only bleiben; geändert: {changed_files}")
-check(by_name["ledger"]["status"] == "PASS", "SQLite quick_check muss PASS sein")
+      f"Supervisor must stay read-only; changed: {changed_files}")
+check(by_name["ledger"]["status"] == "PASS", "SQLite quick_check must be PASS")
 check(by_name["checkpoint"]["status"] == "WARN",
-      "Terminaler/mojibake Checkpoint muss erkannt werden")
+      "Terminal/mojibake checkpoint must be detected")
 check(by_name["locks"]["evidence"]["stale"] == ["test:resource"],
-      "Stales Task-Lock muss erkannt werden")
+      "Stale task lock must be detected")
 check(by_name["knowledge_index"]["evidence"]["drift"],
-      "Geaenderter Quellenhash muss Indexdrift ergeben")
+      "Changed source hash must yield index drift")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

@@ -1,4 +1,4 @@
-"""Deterministische Evals und append-only KPI-Erfassung."""
+"""Deterministic evals and append-only KPI capture."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def load_cases(directory: str | Path = paths.EVALS_DIR) -> list[EvalCase]:
 
 
 def score(case: EvalCase, output: str) -> dict[str, Any]:
-    """Prueft explizite Textkriterien; keine KI bewertet ihre eigene Antwort."""
+    """Checks explicit text criteria; no AI grades its own answer."""
     case.validate()
     normalized = output.casefold()
     missing = [term for term in case.must_include if term.casefold() not in normalized]

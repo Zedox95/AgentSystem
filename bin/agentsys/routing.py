@@ -1,32 +1,32 @@
-"""Modell-Routing — deterministische Klassifikation einer Aufgabe.
+"""Model routing — deterministic classification of a task.
 
-Beantwortet drei Fragen, ohne selbst ein Modell zu befragen:
+Answers three questions without consulting a model itself:
 
-* Welche **Domäne** — und damit welcher Subagent?
-* Welche **Risikoklasse** R0-R3?
-* Wieviel **Denkleistung** braucht das — Modellstufe und Effort?
+* Which **domain** — and therefore which subagent?
+* Which **risk class** R0-R3?
+* How much **thinking power** does this need — model tier and effort?
 
-## Warum regelbasiert
+## Why rule-based
 
-Ein Klassifizierer, der selbst ein Modell aufruft, verbraucht genau das
-Kontingent, das er einsparen soll — und braucht dafür wieder eine
-Modellentscheidung. Diese Rekursion wird hier abgeschnitten: reine Muster,
-keine Netzwerkaufrufe, Laufzeit im Millisekundenbereich.
+A classifier that itself calls a model consumes exactly the quota it's
+meant to save — and needs another model decision to do so. This recursion
+is cut off here: pure patterns, no network calls, runtime in the
+millisecond range.
 
-## Was die Empfehlung *nicht* kann
+## What the recommendation *cannot* do
 
-Sie kann das Modell der laufenden Sitzung nicht wechseln — wenn sie greift,
-hat dieses Modell den Prompt bereits gelesen. Sie wirkt an zwei Stellen:
+It cannot switch the model of the running session — by the time it applies,
+that model has already read the prompt. It acts in two places:
 
-1. als Hinweis an den Lead Agent, der eine Aufgabe **delegieren** und dabei
-   das Modell pro Aufruf setzen kann — dort greift Routung tatsächlich
-2. als Hinweis an den Benutzer, wenn ein Sitzungswechsel sich lohnt
+1. as a hint to the lead agent, which can **delegate** a task and set the
+   model per call — that's where routing actually takes effect
+2. as a hint to the user, when a session switch would be worthwhile
 
-## Modellstufen
+## Model tiers
 
-Bewusst als Alias, nicht als Versions-ID: `sonnet` und `opus` zeigen immer auf
-die aktuelle Generation. Damit veraltet nichts, und es wird kein bestimmtes
-Modell verdrahtet.
+Deliberately an alias, not a version ID: `sonnet` and `opus` always point to
+the current generation. That way nothing goes stale, and no specific model
+is hardwired.
 """
 
 from __future__ import annotations
@@ -34,15 +34,15 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-ROUTINE = "sonnet"      # Ausführung, Bekanntes, Messbares
-STRONG = "opus"         # Ambiguität, Planung, kritische Entscheidungen
+ROUTINE = "sonnet"      # execution, known territory, measurable
+STRONG = "opus"         # ambiguity, planning, critical decisions
 
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 
 
 @dataclass
 class Routing:
-    """Das Ergebnis einer Klassifikation."""
+    """The result of a classification."""
 
     domain: str
     agent: str | None
@@ -66,13 +66,14 @@ def _c(pattern: str) -> re.Pattern[str]:
 
 
 # --------------------------------------------------------------------------
-# Domäne -> zuständiger Subagent
+# Domain -> responsible subagent
 # --------------------------------------------------------------------------
 
 DOMAINS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
-    # `\w*?` nur vor den Substantiven, die typischerweise in Komposita
-    # stecken — "Grafiktreiber", "Druckerspooler", "Systemdienst". Nicht
-    # pauschal auf alle Muster: `\b\w*?git\b` würde sonst "digit" treffen.
+    # `\w*?` only in front of the nouns that typically appear in German
+    # compounds — "Grafiktreiber", "Druckerspooler", "Systemdienst". Not
+    # applied blanket to every pattern: `\b\w*?git\b` would otherwise match
+    # "digit".
     ("windows", "windows-agent", _c(
         r"\b(?:windows|powershell|registry|driver|event.?log|"
         r"geräte.?manager|geraete.?manager|bluescreen|bsod|autostart|"
@@ -99,12 +100,12 @@ DOMAINS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
 
 
 # --------------------------------------------------------------------------
-# Risiko: die Handlung entscheidet, nicht das Objekt
+# Risk: the action decides, not the object
 # --------------------------------------------------------------------------
 #
-# "Treiber" allein ist kein Risiko — "Treiber installieren" schon. Wer nur
-# nach Substantiven klassifiziert, stuft eine reine Diagnose als Änderung ein
-# und verlangt Backup und Rollback für etwas, das nichts anfasst.
+# "Driver" alone is not a risk — "install driver" is. A classifier that only
+# looks at nouns would rate a pure diagnosis as a change and demand backup
+# and rollback for something that touches nothing.
 
 MUTATION = _c(
     r"\b(installier\w*|deinstallier\w*|entfern\w*|lösch\w*|loesch\w*|delete|"
@@ -114,9 +115,9 @@ MUTATION = _c(
     r"zurücksetz\w*|zuruecksetz\w*|migrier\w*|verschieb\w*|umzieh\w*|"
     r"richte\w* ein|einrichten|schalte\w*|stopp\w*|beende\w*)\b")
 
-# Deutsche trennbare Verben: die Partikel steht oft am Satzende.
-# "Starte den Druckerspooler **neu**" trifft ein Muster "starte neu" nicht —
-# genau dieser Fall ist beim Testen aufgefallen.
+# German separable verbs: the particle often sits at the end of the
+# sentence. "Starte den Druckerspooler **neu**" does not match a pattern
+# "starte neu" — this exact case turned up during testing.
 MUTATION_SEPARABLE = _c(
     r"\b(start\w*|fahr\w*|schalt\w*|setz\w*|mach\w*|leg\w*|nimm)\b"
     r"[^.!?;]{0,60}?\b(neu|aus|ein|ab|hoch|herauf|hinauf|runter|herunter|"
@@ -128,10 +129,10 @@ READONLY_VERB = _c(
     r"finde|such\w*|inventar\w*|status|report\w*|beschreib\w*|"
     r"was ist|wie viel\w*)\b")
 
-# `\b\w*?` davor: deutsche Komposita. "Druckerspooler", "Grafiktreiber",
-# "Systemdienst" — ohne den Vorspann verlangt `\bspooler` eine Wortgrenze,
-# die im zusammengesetzten Wort nicht existiert. Das unterschätzt Risiko,
-# also die gefährliche Richtung.
+# `\b\w*?` in front: German compound words. "Druckerspooler",
+# "Grafiktreiber", "Systemdienst" — without the prefix, `\bspooler` requires
+# a word boundary that doesn't exist inside the compound word. That
+# underestimates risk, i.e. the dangerous direction.
 OBJECT_R3 = _c(
     r"\b\w*?(partition\w*|datenträger\w*|datentraeger\w*|festplatte\w*|bios|"
     r"firmware\w*|bootloader\w*|werkseinstell\w*|benutzerkonto\w*|"
@@ -146,11 +147,11 @@ OBJECT_R2 = _c(
 
 
 # --------------------------------------------------------------------------
-# Denkbedarf
+# Thinking requirement
 # --------------------------------------------------------------------------
 #
-# Wortstämme bleiben nach hinten offen: `vergleich\b` würde "Vergleiche"
-# nicht treffen — genau dieser Fehler ist beim Testen aufgefallen.
+# Word stems are left open-ended at the tail: `vergleich\b` would not match
+# "Vergleiche" — this exact bug turned up during testing.
 
 AMBIGUITY = _c(
     r"\b(warum|wieso|weshalb|analysier\w*|untersuch\w*|diagnos\w*|"
@@ -172,12 +173,12 @@ EXPLICIT_INSTRUCTION = _c(r"\b(führe aus|fuehre aus|mach genau|nur\b)\b")
 
 
 def classify(prompt: str) -> Routing:
-    """Klassifiziert einen Auftrag und empfiehlt Modellstufe und Effort."""
+    """Classifies a task and recommends a model tier and effort."""
     text = (prompt or "").strip()
     reasons: list[str] = []
     signals: dict[str, list[str]] = {}
 
-    # --- Domäne -----------------------------------------------------------
+    # --- Domain -------------------------------------------------------------
     domain, agent = "allgemein", None
     hits: list[tuple[str, str, int]] = []
     for name, subagent, pattern in DOMAINS:
@@ -190,27 +191,27 @@ def classify(prompt: str) -> Routing:
         hits.sort(key=lambda h: -h[2])
         domain, agent = hits[0][0], hits[0][1]
         if len(hits) > 1 and hits[0][2] == hits[1][2]:
-            reasons.append(f"mehrere Domänen gleich stark ({hits[0][0]}/{hits[1][0]})")
+            reasons.append(f"multiple domains equally strong ({hits[0][0]}/{hits[1][0]})")
 
-    # --- Risiko: Handlung vor Objekt --------------------------------------
+    # --- Risk: action before object ------------------------------------
     mutates = bool(MUTATION.search(text) or MUTATION_SEPARABLE.search(text))
     reads_only = bool(READONLY_VERB.search(text))
 
     if mutates and OBJECT_R3.search(text):
         risk = "R3"
-        signals["risiko"] = ["mutierendes Verb + kritisches Objekt"]
+        signals["risiko"] = ["mutating verb + critical object"]
     elif mutates and OBJECT_R2.search(text):
         risk = "R2"
-        signals["risiko"] = ["mutierendes Verb + relevantes Objekt"]
+        signals["risiko"] = ["mutating verb + relevant object"]
     elif mutates:
         risk = "R1"
-        signals["risiko"] = ["mutierendes Verb ohne erkanntes Zielobjekt"]
+        signals["risiko"] = ["mutating verb without a recognized target object"]
     else:
         risk = "R0"
         if (OBJECT_R3.search(text) or OBJECT_R2.search(text)) and reads_only:
-            reasons.append("nur lesend trotz heikler Objekte — kein Preflight nötig")
+            reasons.append("read-only despite sensitive objects — no preflight needed")
 
-    # --- Denkbedarf -------------------------------------------------------
+    # --- Thinking requirement -----------------------------------------------
     ambiguous = bool(AMBIGUITY.search(text))
     routine = bool(ROUTINE_SIGNALS.search(text))
     explicit = bool(EXPLICIT_INSTRUCTION.search(text))
@@ -221,24 +222,24 @@ def classify(prompt: str) -> Routing:
 
     if risk == "R3":
         model, effort = STRONG, "high"
-        reasons.append("R3: schwer umkehrbar, Fehlentscheidung teuer")
+        reasons.append("R3: hard to reverse, a wrong decision is costly")
     elif ambiguous:
         model, effort = STRONG, "high"
-        reasons.append("offene Frage statt klarer Anweisung")
+        reasons.append("open question instead of a clear instruction")
     elif risk == "R2":
         effort = "high"
-        reasons.append("R2: reale Änderung, aber klar umrissen")
+        reasons.append("R2: real change, but clearly scoped")
     elif routine:
         effort = "low" if explicit else "medium"
-        reasons.append("abfragende oder klar umrissene Aufgabe")
+        reasons.append("query-style or clearly scoped task")
 
-    # Ein sehr langer Auftrag hat meist mehrere Teilziele.
+    # A very long task usually has several sub-goals.
     if len(text) > 700 and model == ROUTINE:
         effort = "high"
-        reasons.append("umfangreicher Auftrag mit mehreren Teilzielen")
+        reasons.append("extensive task with multiple sub-goals")
 
     if len(text) < 15:
-        reasons.append("sehr kurzer Auftrag — Einordnung unsicher")
+        reasons.append("very short task — classification uncertain")
 
     return Routing(domain=domain, agent=agent, risk=risk,
                    model=model, effort=effort, reasons=reasons, signals=signals)
@@ -246,21 +247,21 @@ def classify(prompt: str) -> Routing:
 
 def escalate(current_model: str, *, failed_attempts: int = 0,
              verifier_verdict: str | None = None) -> tuple[str, str, str]:
-    """Bestimmt die nächste Stufe nach einem Fehlschlag.
+    """Determines the next tier after a failure.
 
-    Eskalation ist kein Automatismus für jeden Fehler: ein Tippfehler wird
-    nicht durch ein stärkeres Modell behoben. Sie greift, wenn ein Versuch aus
-    *Denkgründen* scheitert — der Verifier also FAIL meldet oder zwei
-    inhaltlich verschiedene Ansätze gescheitert sind.
+    Escalation is not an automatism for every error: a typo is not fixed by
+    a stronger model. It applies when an attempt fails for *thinking
+    reasons* — i.e. the verifier reports FAIL, or two substantively
+    different approaches have failed.
     """
     verdict = (verifier_verdict or "").upper()
 
     if verdict == "INCONCLUSIVE":
         return (current_model, "high",
-                "Evidenz reicht nicht — mehr Prüftiefe, nicht mehr Modell")
+                "Evidence is insufficient — more depth of testing, not a bigger model")
     if verdict == "FAIL" or failed_attempts >= 2:
         if current_model == ROUTINE:
             return (STRONG, "high",
-                    "Scheitern aus Denkgründen — stärkeres Modell mit Evidenz-Handoff")
-        return (STRONG, "xhigh", "Bereits stark — Effort erhöhen statt Modell wechseln")
-    return (current_model, "medium", "Kein Eskalationsgrund")
+                    "Failure for reasoning-related reasons — stronger model with evidence handoff")
+        return (STRONG, "xhigh", "Already strong — raise effort instead of switching model")
+    return (current_model, "medium", "No reason to escalate")

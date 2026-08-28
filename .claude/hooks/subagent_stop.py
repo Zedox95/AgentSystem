@@ -1,11 +1,11 @@
-"""SubagentStop — strukturiertes Ergebnis erzwingen.
+"""SubagentStop — enforce a structured result.
 
-„Alles erledigt" ohne Evidenz ist keine gültige Antwort (AGENTS.md Abschnitt 24).
-Fehlen Pflichtabschnitte, verhindert Exit 2 das Beenden, damit der Subagent
-nachliefert.
+"All done" without evidence is not a valid answer (AGENTS.md section 24).
+If required sections are missing, exit 2 prevents finishing so the subagent
+supplies them.
 
-Der `verification-agent` wird zusätzlich darauf geprüft, dass er genau eine der
-drei zulässigen Bewertungen abgibt.
+The `verification-agent` is additionally checked to ensure it gives exactly
+one of the three allowed verdicts.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import hooklib
 REQUIRED = ("STATUS:", "EVIDENCE:", "TESTS:", "NEXT_ACTION:")
 VALID_STATUS = ("PASS", "FAIL", "INCONCLUSIVE")
 
-# Subagenten, für die das strikte Format gilt.
+# Subagents for which the strict format applies.
 STRICT_AGENTS = (
     "verification-agent", "windows-agent", "infrastructure-agent",
     "browser-agent", "gaming-agent", "implementation-agent",
@@ -51,19 +51,19 @@ def main() -> None:
     if missing or bad_status or status is None:
         problems = []
         if missing:
-            problems.append("fehlende Abschnitte: " + ", ".join(missing))
+            problems.append("missing sections: " + ", ".join(missing))
         if status is None:
-            problems.append("kein auswertbares STATUS-Feld")
+            problems.append("no evaluable STATUS field")
         elif bad_status:
             problems.append(
-                f"STATUS '{status}' ist unzulässig — erlaubt sind "
+                f"STATUS '{status}' is not permitted — allowed are "
                 + " / ".join(VALID_STATUS)
             )
         sys.stderr.write(
-            f"Ergebnisformat unvollständig ({'; '.join(problems)}). "
-            "Antworte nach AGENTS.md Abschnitt 24 mit STATUS, EVIDENCE, CHANGES, "
-            "TESTS, RISKS und NEXT_ACTION. Unter EVIDENCE gehören die tatsächlich "
-            "ausgeführten Kommandos und deren rohe Ausgabe — keine Zusammenfassung."
+            f"Result format incomplete ({'; '.join(problems)}). "
+            "Respond per AGENTS.md section 24 with STATUS, EVIDENCE, CHANGES, "
+            "TESTS, RISKS, and NEXT_ACTION. EVIDENCE must contain the actually "
+            "executed commands and their raw output — not a summary."
         )
         sys.exit(2)
 

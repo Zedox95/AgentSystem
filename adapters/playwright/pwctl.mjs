@@ -1,19 +1,19 @@
 /**
- * pwctl — Browser-Aktionsschicht des Agentensystems.
+ * pwctl — browser action layer of the agent system.
  *
- * Strukturiert statt visuell: Lokalisierung über Accessibility-Rollen und
- * -Namen, Verifikation über DOM und HTTP-Antwort. Screenshots und
- * Pixelkoordinaten sind Fallback, nicht Arbeitsweise.
+ * Structured rather than visual: localization via accessibility roles and
+ * names, verification via DOM and HTTP response. Screenshots and pixel
+ * coordinates are a fallback, not the way of working.
  *
- * Jede Ausgabe ist JSON auf stdout. Diagnose geht nach stderr.
+ * Every output is JSON on stdout. Diagnostics go to stderr.
  *
- * Aufruf:
- *   node C:\AgentSystem\adapters\playwright\pwctl.mjs <befehl> [optionen]
+ * Invocation:
+ *   node C:\AgentSystem\adapters\playwright\pwctl.mjs <command> [options]
  *
- * Profile: `--profile <name>` benutzt einen persistenten Browserkontext unter
- * `state/browser-profiles/<name>`. Der enthält Cookies und Sitzungsdaten und
- * ist damit ein Secret im Sinne von AGENTS.md Abschnitt 20 — er liegt
- * ausserhalb der Versionskontrolle und wird nie protokolliert.
+ * Profiles: `--profile <name>` uses a persistent browser context under
+ * `state/browser-profiles/<name>`. It contains cookies and session data and
+ * is therefore a secret in the sense of AGENTS.md section 20 — it lives
+ * outside version control and is never logged.
  */
 
 import { chromium } from 'playwright';
@@ -53,7 +53,7 @@ function parseArgs(argv) {
   return { command, options };
 }
 
-/** Öffnet einen Browser: entweder flüchtig oder mit persistentem Profil. */
+/** Opens a browser: either ephemeral or with a persistent profile. */
 async function open(options, { forceHeaded = false } = {}) {
   const headless = forceHeaded ? false : (options.headed ? false : true);
   if (options.profile) {
@@ -69,7 +69,7 @@ async function open(options, { forceHeaded = false } = {}) {
   return { context, page, close: () => browser.close() };
 }
 
-/** Lädt eine Seite und gibt die HTTP-Antwort zurück — die ist verifizierbar. */
+/** Loads a page and returns the HTTP response — that is verifiable. */
 async function goto(page, url, options) {
   const response = await page.goto(url, {
     waitUntil: options.wait || 'domcontentloaded',
@@ -80,7 +80,7 @@ async function goto(page, url, options) {
     : { url, status: null, ok: null };
 }
 
-/** Baut einen Locator aus Rolle und Name — die stabile Lokalisierung. */
+/** Builds a locator from role and name — the stable localization. */
 function locate(page, options) {
   if (options.role) {
     const byRole = page.getByRole(options.role, {
@@ -95,16 +95,16 @@ function locate(page, options) {
   if (options.testid) return page.getByTestId(options.testid);
   if (options.selector) return page.locator(options.selector);
   throw new Error(
-    'Kein Lokalisierer angegeben. Bevorzugt --role mit --name; ' +
-      'sonst --label, --placeholder, --text, --testid oder als letztes --selector.'
+    'No locator specified. Prefer --role with --name; ' +
+      'otherwise --label, --placeholder, --text, --testid, or as a last resort --selector.'
   );
 }
 
 /**
- * Führt eine Schrittfolge auf einer bereits geöffneten Seite aus.
+ * Runs a sequence of steps on an already-open page.
  *
- * Gemeinsam genutzt von `plan` und `session`. Bricht beim ersten Fehlschlag ab
- * und meldet, was bereits lief - ein halb ausgeführter Plan ist kein Erfolg.
+ * Shared by `plan` and `session`. Aborts on the first failure and reports
+ * what already ran - a half-executed plan is not a success.
  */
 async function runSteps(page, steps) {
   const done = [];
@@ -115,11 +115,11 @@ async function runSteps(page, steps) {
         result = await goto(page, step.url, step);
       } else if (step.action === 'wait') {
         await page.waitForTimeout(Number(step.ms || 1000));
-        result = 'gewartet';
+        result = 'waited';
       } else if (step.action === 'expect') {
         const locator = locate(page, step);
         const visible = await locator.first().isVisible().catch(() => false);
-        if (!visible) throw new Error('Erwartetes Element ist nicht sichtbar');
+        if (!visible) throw new Error('Expected element is not visible');
         result = { visible: true };
       } else {
         const locator = locate(page, step);
@@ -136,7 +136,7 @@ async function runSteps(page, steps) {
           const snap = await locator.ariaSnapshot();
           result = { aria: snap.split('\n').slice(0, 80).join('\n') };
         } else {
-          throw new Error(`Unbekannte Aktion: ${step.action}`);
+          throw new Error(`Unknown action: ${step.action}`);
         }
       }
       done.push({ index, action: step.action, status: 'OK', result });
@@ -149,10 +149,10 @@ async function runSteps(page, steps) {
 }
 
 /**
- * Wartet, bis eine Anmeldung beobachtbar gelungen ist.
+ * Waits until a login has observably succeeded.
  *
- * Das Werkzeug tippt **kein** Passwort - Zugangsdaten gibt ausschliesslich der
- * Benutzer selbst ein (AGENTS.md Abschnitt 20).
+ * The tool **never** types a password - credentials are entered exclusively
+ * by the user themselves (AGENTS.md section 20).
  */
 async function waitForLogin(page, options, startUrl) {
   const deadline = Date.now() + Number(options.timeout || 300000);
@@ -168,7 +168,7 @@ async function waitForLogin(page, options, startUrl) {
         return true;
       }
     } catch {
-      // Navigation mitten in der Prüfung: nächster Durchlauf.
+      // Navigation mid-check: next iteration.
     }
   }
   return false;
@@ -178,10 +178,10 @@ async function waitForLogin(page, options, startUrl) {
 
 const COMMANDS = {
   /**
-   * Accessibility-Momentaufnahme: die strukturierte Sicht auf die Seite.
+   * Accessibility snapshot: the structured view of the page.
    *
-   * Benutzt `ariaSnapshot`. Das frühere `page.accessibility` gibt es in
-   * Playwright 1.62 nicht mehr - siehe docs/known-issues.md.
+   * Uses `ariaSnapshot`. The former `page.accessibility` no longer exists in
+   * Playwright 1.62 - see docs/known-issues.md.
    */
   async snapshot({ page }, options) {
     const response = await goto(page, options.url, options);
@@ -203,13 +203,12 @@ const COMMANDS = {
   },
 
   /**
-   * Anmeldemodus: öffnet die Seite sichtbar und wartet, bis DU dich angemeldet
-   * hast. Das Werkzeug tippt **kein** Passwort — Zugangsdaten gibt
-   * ausschliesslich der Benutzer selbst ein (AGENTS.md Abschnitt 20).
+   * Login mode: opens the page visibly and waits until YOU have logged in.
+   * The tool **never** types a password — credentials are entered
+   * exclusively by the user themselves (AGENTS.md section 20).
    *
-   * Erfolg wird an einem beobachtbaren Zustand festgemacht: einer erwarteten
-   * Rolle, einem Text oder einem URL-Wechsel. Erst wenn der eintritt, gilt die
-   * Anmeldung als bestätigt.
+   * Success is tied to an observable state: an expected role, a text, or a
+   * URL change. Only once that occurs does the login count as confirmed.
    */
   async login({ page }, options) {
     const response = await goto(page, options.url, options);
@@ -230,7 +229,7 @@ const COMMANDS = {
           break;
         }
       } catch {
-        // Navigation mitten in der Prüfung: nächster Durchlauf.
+        // Navigation mid-check: next iteration.
       }
     }
 
@@ -242,14 +241,14 @@ const COMMANDS = {
       url_after: page.url(),
       title_after: await page.title().catch(() => null),
       hint: reached
-        ? 'Sitzung liegt im Profil und bleibt für weitere Aufrufe erhalten.'
-        : 'Kein Anmeldeerfolg erkannt. Entweder wurde nicht angemeldet, oder das '
-          + 'Erfolgsmerkmal (--until) passt nicht zur Oberfläche.',
+        ? 'Session lives in the profile and persists for further calls.'
+        : 'No successful login detected. Either you did not log in, or the '
+          + 'success criterion (--until) does not match the interface.',
       aria: aria.split('\n').slice(0, 60).join('\n'),
     };
   },
 
-  /** Reiner Seitentext — für Diagnose und Inhaltsprüfung. */
+  /** Plain page text — for diagnostics and content checks. */
   async text({ page }, options) {
     const response = await goto(page, options.url, options);
     const target = options.selector ? page.locator(options.selector) : page.locator('body');
@@ -263,7 +262,7 @@ const COMMANDS = {
     };
   },
 
-  /** HTTP-Antwort ohne Interaktion — die günstigste Verifikation. */
+  /** HTTP response without interaction — the cheapest verification. */
   async http({ page }, options) {
     const response = await goto(page, options.url, options);
     return { response, title: await page.title() };
@@ -273,11 +272,11 @@ const COMMANDS = {
     const response = await goto(page, options.url, options);
     const locator = locate(page, options);
     const count = await locator.count();
-    if (count === 0) throw new Error('Kein Element gefunden für den Lokalisierer');
+    if (count === 0) throw new Error('No element found for the locator');
     if (count > 1 && options.nth === undefined) {
       throw new Error(
-        `Lokalisierer trifft ${count} Elemente. Mit --nth eingrenzen oder ` +
-          '--exact setzen, statt auf gut Glück das erste zu nehmen.'
+        `Locator matches ${count} elements. Narrow down with --nth or ` +
+          'set --exact, instead of guessing and taking the first one.'
       );
     }
     await locator.click({ timeout: Number(options.timeout || DEFAULT_TIMEOUT) });
@@ -290,11 +289,11 @@ const COMMANDS = {
     };
   },
 
-  /** Feld füllen und den Wert zurücklesen — geschrieben gilt erst als gesetzt. */
+  /** Fill a field and read the value back — written only counts once verified. */
   async fill({ page }, options) {
     const response = await goto(page, options.url, options);
     const locator = locate(page, options);
-    if ((await locator.count()) === 0) throw new Error('Kein Eingabefeld gefunden');
+    if ((await locator.count()) === 0) throw new Error('No input field found');
     await locator.fill(String(options.value ?? ''), {
       timeout: Number(options.timeout || DEFAULT_TIMEOUT),
     });
@@ -307,7 +306,7 @@ const COMMANDS = {
     };
   },
 
-  /** Screenshot — ausdrücklich Fallback, nicht Arbeitsweise. */
+  /** Screenshot — explicitly a fallback, not the way of working. */
   async screenshot({ page }, options) {
     const response = await goto(page, options.url, options);
     const target = options.out || path.join(ROOT, 'logs', `screenshot-${Date.now()}.png`);
@@ -317,8 +316,8 @@ const COMMANDS = {
   },
 
   /**
-   * Schrittfolge in einem Kontext. Bricht beim ersten Fehlschlag ab und meldet,
-   * was bereits lief — ein halb ausgeführter Plan ist kein Erfolg.
+   * Sequence of steps in one context. Aborts on the first failure and
+   * reports what already ran — a half-executed plan is not a success.
    */
   async plan({ page }, options) {
     const plan = JSON.parse(await readFile(options.file, 'utf-8'));
@@ -342,19 +341,19 @@ const { command, options } = parseArgs(process.argv);
 if (!command || command === 'help' || !COMMANDS[command]) {
   out({
     commands: Object.keys(COMMANDS),
-    locators: ['--role + --name (bevorzugt)', '--label', '--placeholder', '--text',
-               '--testid', '--selector (letzte Wahl)'],
+    locators: ['--role + --name (preferred)', '--label', '--placeholder', '--text',
+               '--testid', '--selector (last resort)'],
     common: ['--url', '--profile', '--headed', '--timeout', '--wait', '--nth', '--exact'],
-    login: 'oeffnet die Seite sichtbar und wartet, bis DU dich angemeldet hast. '
-         + 'Das Werkzeug tippt niemals ein Passwort. Mit --until <text> das '
-         + 'Erfolgsmerkmal angeben, sonst gilt ein URL-Wechsel als Erfolg.',
-    note: 'Screenshots und Selektoren sind Fallback. Accessibility-Rollen sind stabil.',
+    login: 'opens the page visibly and waits until YOU have logged in. '
+         + 'The tool never types a password. Use --until <text> to specify the '
+         + 'success criterion, otherwise a URL change counts as success.',
+    note: 'Screenshots and selectors are a fallback. Accessibility roles are stable.',
   });
   process.exit(command && command !== 'help' ? 1 : 0);
 }
 
 if (!options.url && command !== 'plan') {
-  fail('--url fehlt');
+  fail('--url missing');
 }
 
 let session;

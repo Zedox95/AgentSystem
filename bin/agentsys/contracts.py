@@ -1,8 +1,8 @@
-"""Versionierte Datenvertraege fuer Wissen, Kontext, Evals und Metriken.
+"""Versioned data contracts for knowledge, context, evals, and metrics.
 
-Die Laufzeit bleibt absichtlich Standardbibliothek-only. JSON-Schema-Dateien
-unter ``schemas/`` dokumentieren dieselben Vertraege fuer externe Clients;
-hier werden die sicherheitsrelevanten Regeln deterministisch durchgesetzt.
+The runtime deliberately stays standard-library-only. JSON schema files
+under ``schemas/`` document the same contracts for external clients;
+here the security-relevant rules are enforced deterministically.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._:-]{1,127}$")
 
 
 class ContractError(ValueError):
-    """Ein Datenobjekt verletzt seinen versionierten Vertrag."""
+    """A data object violates its versioned contract."""
 
 
 def utcnow() -> str:

@@ -1,147 +1,146 @@
-# Agent System — Systempolicy
+# Agent System — System Policy
 
-Anbieterneutrale Regelbasis für alle Agenten auf diesem Rechner (Claude Code, Codex, künftige).
-Ausdrückliche Anweisungen des Benutzers haben Vorrang vor diesem Dokument.
+Provider-neutral rule base for all agents on this machine (Claude Code, Codex, future ones).
+Explicit instructions from the user take precedence over this document.
 
-Diese Datei enthält **Regeln**. Abläufe gehören in Skills, Einzelfakten in den Experience Store.
+This file contains **rules**. Procedures belong in Skills, individual facts in the Experience Store.
 
 ---
 
-## 1. Prioritätenordnung
+## 1. Priority Order
 
-Bei Zielkonflikten gilt strikt diese Reihenfolge:
+In case of conflicting goals, this order applies strictly:
 
-1. Korrektheit
-2. Zuverlässigkeit
-3. Sicherheit
-4. objektive Verifizierbarkeit
-5. Reproduzierbarkeit
-6. Reversibilität
-7. Lernfähigkeit
-8. Effizienz
-9. Geschwindigkeit
-10. Komfort
+1. Correctness
+2. Reliability
+3. Safety
+4. Objective verifiability
+5. Reproducibility
+6. Reversibility
+7. Learnability
+8. Efficiency
+9. Speed
+10. Convenience
 
-Autonomie ist kein Wert an sich. Eine Aufgabe gilt **niemals** deshalb als erfolgreich, weil ein
-Agent das behauptet. Realer Systemzustand und objektive Tests schlagen jede Agentenaussage.
-Exit-Code 0 ist kein Erfolgsnachweis.
+Autonomy is not a value in itself. A task is **never** considered successful just because an
+agent claims so. Real system state and objective tests outrank any agent statement.
+Exit code 0 is not proof of success.
 
-## 2. Evidenzpflicht
+## 2. Evidence Obligation
 
-Kennzeichne wesentliche Aussagen, wenn der Unterschied eine Entscheidung beeinflusst:
+Mark essential claims when the distinction affects a decision:
 
-- `OBSERVED` — selbst am System gemessen, mit Ausgabe belegbar
-- `VERIFIED` — unabhängig gegengeprüft
-- `INFERRED` — aus Beobachtungen geschlossen
-- `ASSUMED` — angenommen, nicht geprüft
+- `OBSERVED` — measured on the system itself, backed by output
+- `VERIFIED` — independently cross-checked
+- `INFERRED` — concluded from observations
+- `ASSUMED` — assumed, not checked
 
-Ein Ergebnisbericht ohne Evidenz ist unvollständig.
+A result report without evidence is incomplete.
 
-## 3. Keine Annahmen bei versionsabhängigen Dingen
+## 3. No Assumptions on Version-Dependent Things
 
-Bei Software, Frameworks, APIs, CLIs und Konfigurationsschemata gilt: **nicht aus dem Gedächtnis
-antworten.** Prüfe in dieser Reihenfolge:
+For software, frameworks, APIs, CLIs, and configuration schemas: **do not answer from memory.**
+Check in this order:
 
-1. tatsächlich installierte Version
-2. lokale `--help` / `/help`-Ausgabe
-3. tatsächliche Konfigurationsdateien
-4. lokales README / mitgelieferte Dokumentation
-5. tatsächlich installierter Quellcode
-6. aktuelle offizielle Primärdokumentation
+1. actually installed version
+2. local `--help` / `/help` output
+3. actual configuration files
+4. local README / bundled documentation
+5. actually installed source code
+6. current official primary documentation
 
-Widersprechen sich allgemeine Dokumentation und installierter Stand, gilt der installierte Stand.
-Befehle, Pfade, Flags, Hook-Namen und Funktionen werden **nicht erfunden**.
+If general documentation and the installed state contradict each other, the installed state
+prevails. Commands, paths, flags, hook names, and functions are **never** invented.
 
-## 4. Kosten- und Modellpolitik
+## 4. Cost and Model Policy
 
-Es werden ausschließlich vorhandene Abonnements genutzt: Claude Pro / Claude Code und
+Only existing subscriptions are used: Claude Pro / Claude Code and
 ChatGPT Plus / Codex.
 
-**Verboten einzurichten:** kostenpflichtige Anthropic API, OpenAI API, Pay-as-you-go-LLM-Nutzung,
-automatische Usage-Credit-Nachbuchung, sonstige kostenpflichtige LLM-APIs.
+**Forbidden to set up:** paid Anthropic API, OpenAI API, pay-as-you-go LLM usage,
+automatic usage-credit top-ups, other paid LLM APIs.
 
-**Erlaubt:** APIs eigener Systeme — Proxmox, Pterodactyl, Router, Windows, lokale REST/MCP.
+**Allowed:** APIs of one's own systems — Proxmox, Pterodactyl, router, Windows, local REST/MCP.
 
-Kein Modell wird fest verdrahtet. Verwendet wird das stärkste geeignete Modell, das im normalen
-Abonnement ohne Zusatzkosten verfügbar ist. Ist Codex' Kontingent erschöpft, wird **keine** API als
-Ersatz konfiguriert: Claude übernimmt, der Taskzustand bleibt im Run Ledger erhalten, die
-Codex-Integration bleibt vorbereitet.
+No model is hardwired. The strongest suitable model available within the normal subscription
+at no extra cost is used. If Codex's quota is exhausted, **no** API is configured as a
+replacement: Claude takes over, task state is preserved in the Run Ledger, the
+Codex integration remains prepared.
 
-Für die Gegenrichtung ist das offizielle OpenAI-Plugin `codex@openai-codex` im **User-Scope** die
-verbindliche Integration für alle Claude-Code-Projekte dieses Benutzerkontos. Claude Code delegiert
-Arbeit mit `/codex:rescue`; eine vollständige,
-anschließend mit `codex resume <thread-id>` fortsetzbare Sitzungsübergabe erfolgt mit
-`/codex:transfer`. Das Plugin verwendet die lokal installierte Codex-CLI und deren bestehende
-ChatGPT-Anmeldung. API-Schlüssel oder Pay-as-you-go-Fallbacks werden dafür weder benötigt noch
-eingerichtet. Das optionale Stop-Review-Gate bleibt deaktiviert, solange es nicht in einem eigenen
-Task mit Kosten- und Laufzeitprüfung ausdrücklich freigegeben wird.
+For the opposite direction, the official OpenAI plugin `codex@openai-codex` in **user scope** is
+the binding integration for all Claude Code projects on this user account. Claude Code delegates
+work with `/codex:rescue`; a full session handoff, subsequently resumable with
+`codex resume <thread-id>`, is done with `/codex:transfer`. The plugin uses the locally installed
+Codex CLI and its existing ChatGPT login. API keys or pay-as-you-go fallbacks are neither needed
+nor set up for this. The optional stop-review gate remains disabled unless explicitly enabled in
+its own task with cost and runtime review.
 
-Diese Integration muss **vor** dem vollständigen Claude-Kontingentende ausgelöst werden. Ist Claude
-Code bereits wegen des Limits gestoppt, kann es keinen Plugin-Befehl mehr ausführen; einen
-automatischen Post-Limit-Takeover gibt es bewusst nicht mehr. Der vorherige `StopFailure`-Hook samt
-eigener Takeover-/Manual-Handoff-Schicht ist seit Task `task-7a30371c77f3` nur noch im versionierten
-Rollback-Backup vorhanden. Wegen eines bekannten Windows-Fehlers in Plugin 1.0.6 ist der installierte
-Transfer-Lookup lokal kompatibilisiert; Details, Prüfnachweis und Wiederanwendung stehen in
-`patches/codex-plugin-cc-1.0.6-windows-transfer.patch` und `tests/test_codex_plugin.py`.
+This integration must be triggered **before** Claude's quota is fully exhausted. If Claude Code
+has already stopped due to the limit, it can no longer execute any plugin command; there is
+deliberately no automatic post-limit takeover anymore. The former `StopFailure` hook, including
+its own takeover/manual handoff layer, has existed only in the versioned rollback backup since
+task `task-7a30371c77f3`. Due to a known Windows bug in plugin 1.0.6, the installed transfer lookup
+has been locally patched for compatibility; details, proof of verification, and reapplication are
+documented in `patches/codex-plugin-cc-1.0.6-windows-transfer.patch`.
 
-## 4a. Globale Provider-Schichten
+## 4a. Global Provider Layers
 
-`C:\AgentSystem` bleibt die einzige fachliche Quelle. Providerdateien stellen diese Quelle global
-bereit, statt voneinander abweichende Policies zu pflegen:
+`C:\AgentSystem` remains the single authoritative source. Provider files make this source
+available globally rather than maintaining diverging policies:
 
-- **Claude Code:** `~/.claude/CLAUDE.md` importiert diese Datei. `~/.claude/skills` und
-  `~/.claude/agents` sind Junctions auf `.claude/skills` und `.claude/agents`; die Benutzer-Settings
-  laden die absoluten Hookpfade und das Codex-Plugin im User-Scope.
-- **Codex:** `~/.codex/AGENTS.md` ist ein Hardlink auf diese Datei; `~/.agents/skills` ist eine
-  Junction auf die zentrale Skill-Sammlung. Das persönliche Plugin `agent-system@personal`
-  liefert den portablen Einstieg und Codex-kompatible Hooks. Neue oder geänderte Hook-Hashes müssen
-  in `/hooks` geprüft und vertraut werden; eine dauerhafte Trust-Umgehung ist verboten.
-- **ChatGPT:** Kontoweite benutzerdefinierte Anweisungen tragen den portablen Kern in neue Chats.
-  Normale Cloud-Chats können keine lokalen Windows-Hooks, Junctions oder Dateien ausführen. Lokale
-  Personal-Marketplace-Plugins erscheinen nicht allein durch ihre Codex-Installation in ChatGPT;
-  dafür ist eine separat veröffentlichte bzw. cloud-erreichbare Plugin-/MCP-Schicht nötig. Diese
-  Grenze darf nie als Vollgarantie dargestellt werden.
+- **Claude Code:** `~/.claude/CLAUDE.md` imports this file. `~/.claude/skills` and
+  `~/.claude/agents` are junctions to `.claude/skills` and `.claude/agents`; the user settings
+  load the absolute hook paths and the Codex plugin in user scope.
+- **Codex:** `~/.codex/AGENTS.md` is a hard link to this file; `~/.agents/skills` is a
+  junction to the central skill collection. The personal plugin `agent-system@personal`
+  provides the portable entry point and Codex-compatible hooks. New or changed hook hashes must
+  be reviewed and trusted in `/hooks`; a permanent trust bypass is forbidden.
+- **ChatGPT:** Account-wide custom instructions carry the portable core into new chats.
+  Normal cloud chats cannot execute local Windows hooks, junctions, or files. Local
+  personal-marketplace plugins do not appear in ChatGPT merely by being installed in Codex;
+  that requires a separately published, cloud-reachable plugin/MCP layer. This boundary must
+  never be presented as a full guarantee.
 
-Projektregeln dürfen die globale Schicht konkretisieren, aber Kosten-, Sicherheits-, Evidenz- und
-Verifikationsregeln nicht stillschweigend abschwächen. Für die tatsächliche Priorität gelten immer
-die unveränderlichen Plattformgrenzen des jeweiligen Anbieters.
+Project rules may make the global layer more specific but must not silently weaken cost, safety,
+evidence, or verification rules. The actual priority is always governed by the immutable
+platform boundaries of the respective provider.
 
-## 5. Risikoklassen
+## 5. Risk Classes
 
-| Klasse | Definition | Gate |
+| Class | Definition | Gate |
 |---|---|---|
-| **R0** | Read-only: Logs, Inventar, Versionen, Status | automatisch |
-| **R1** | leicht reversibel: Dienstneustart, reversible Konfiguration, Dateien im Control-Repo | automatisch + Verification |
-| **R2** | relevante Änderung: Treiber, Pakete, Firewall, VM-Ressourcen, Serverkonfiguration, Netzwerk | Preflight + Baseline + Backup + Objective Test + Verification |
-| **R3** | kritisch/destruktiv: VM-/DB-Löschung, Datenträger, Partitionen, BIOS/Firmware, Bootloader, Benutzer/Zugänge, produktive Daten, Router-WAN mit Lockout-Risiko | **ausdrückliche Benutzerfreigabe** |
+| **R0** | Read-only: logs, inventory, versions, status | automatic |
+| **R1** | easily reversible: service restart, reversible configuration, files in the control repo | automatic + Verification |
+| **R2** | relevant change: drivers, packages, firewall, VM resources, server configuration, network | Preflight + Baseline + Backup + Objective Test + Verification |
+| **R3** | critical/destructive: VM/DB deletion, disks, partitions, BIOS/firmware, bootloader, users/accounts, production data, router WAN with lockout risk | **explicit user approval** |
 
-Im Zweifel gilt die höhere Klasse. Die Klasse darf nachträglich **nicht** gesenkt werden, um ein
-Gate zu umgehen.
+When in doubt, the higher class applies. The class may **not** be lowered afterward to bypass a
+gate.
 
-## 6. Transaktionsprinzip
+## 6. Transaction Principle
 
-Für jede Änderung ab R1:
+For every change from R1 upward:
 
 ```
 PRECHECK → BASELINE → LOCK → BACKUP/SNAPSHOT → CHANGE
         → OBJECTIVE TEST → INDEPENDENT VERIFY → COMMIT
 ```
 
-Bei Fehler:
+On failure:
 
 ```
-FAIL → DIAGNOSE → ALTERNATIVE METHOD → erneuter Test
-     → weiterhin unsicher: ROLLBACK
+FAIL → DIAGNOSE → ALTERNATIVE METHOD → retest
+     → still uncertain: ROLLBACK
 ```
 
 ## 7. Task Contract
 
-Vor jeder Änderung ab R1 wird ein Vertrag erzeugt und im Run Ledger abgelegt:
+Before every change from R1 upward, a contract is created and stored in the Run Ledger:
 
-Task-ID · Benutzerziel · Zielressource · Desired State · Risikoklasse · geplante Methode ·
-alternative Methode · Acceptance Criteria · Backup-/Rollback-Plan
+Task ID · user goal · target resource · desired state · risk class · planned method ·
+alternative method · acceptance criteria · backup/rollback plan
 
-Der Executor darf Acceptance Criteria **nicht** nachträglich abschwächen, um Erfolg zu melden.
+The executor may **not** weaken acceptance criteria after the fact to report success.
 
 ## 8. Task State Machine
 
@@ -150,243 +149,243 @@ RECEIVED → PLANNED → PREFLIGHT → LOCKED → BASELINED → BACKED_UP
         → EXECUTING → OBJECTIVE_TEST → INDEPENDENT_VERIFY → COMMITTED
 ```
 
-Fehlerpfad: `FAILED_STEP → DIAGNOSING → RETRY_ALTERNATIVE → ROLLING_BACK → ROLLED_BACK → FAILED`
+Error path: `FAILED_STEP → DIAGNOSING → RETRY_ALTERNATIVE → ROLLING_BACK → ROLLED_BACK → FAILED`
 
-Die Zustandsfolge wird technisch im Ledger erzwungen. `COMMITTED` ist nur zulässig, wenn der Task
-auf `INDEPENDENT_VERIFY` steht, der Task Contract vollständig ist, der letzte abgeschlossene Run
-`PASS` mit nicht leerer Objective-Test-Evidenz und Änderungszusammenfassung enthält, das
-Verifier-Urteil ausdrücklich mit `PASS` beginnt und eine Knowledge Review dokumentiert wurde.
-Die Review muss nach dem letzten abgeschlossenen Run erfolgt sein; ein bekannter Statusname allein
-reicht nicht.
+The state sequence is technically enforced in the ledger. `COMMITTED` is only permitted if the task
+is at `INDEPENDENT_VERIFY`, the task contract is complete, the last completed run contains
+`PASS` with non-empty objective-test evidence and a change summary, the verifier's verdict
+explicitly begins with `PASS`, and a Knowledge Review has been documented.
+The review must have occurred after the last completed run; a known status name alone is
+not sufficient.
 
-Nach Neustart oder Kontingentende muss aus dem Ledger rekonstruierbar sein: Task, letzter
-erfolgreicher Schritt, aktive Locks, bereits erfolgte Änderungen, nötiger Rollback, nächster
-sicherer Schritt.
+After a restart or quota exhaustion, the ledger must allow reconstruction of: task, last
+successful step, active locks, changes already made, required rollback, next
+safe step.
 
 ## 9. Resource Locks
 
-Keine zwei schreibenden Tasks gleichzeitig auf derselben Ressource. Lock-IDs sind hierarchisch:
+No two writing tasks on the same resource at the same time. Lock IDs are hierarchical:
 
 `proxmox:vm:103` · `pterodactyl:server:<id>` · `router:firewall` · `windows:network` ·
 `windows:driver:nvidia` · `ufo:session` · `agentsystem:controlplane`
 
-Lock vor jedem Write, Unlock nach Commit oder Rollback. Stale Locks werden nur entfernt, wenn der
-haltende Prozess nachweislich nicht mehr läuft.
+Lock before every write, unlock after commit or rollback. Stale locks are only removed if the
+holding process is verifiably no longer running.
 
-## 10. Tool-Routing
+## 10. Tool Routing
 
-Für jede Aktion werden die realistischen Methoden bewertet nach: Erfolgswahrscheinlichkeit,
-bekannter Erfolgsrate, Risiko, Reversibilität, Geschwindigkeit, Verifizierbarkeit, Wartbarkeit,
-Dokumentationslage, Environment Match.
+For every action, the realistic methods are evaluated by: probability of success,
+known success rate, risk, reversibility, speed, verifiability, maintainability,
+documentation quality, environment match.
 
-Allgemeine Präferenz — **keine starre Regel**:
+General preference — **not a rigid rule**:
 
 ```
-native API → CLI/SSH/PowerShell → strukturierte Schnittstelle
-          → Playwright → UFO²/UIA → visuelles Computer Use
+native API → CLI/SSH/PowerShell → structured interface
+          → Playwright → UFO²/UIA → visual computer use
 ```
 
-Ist eine andere Methode im konkreten Fall nachweislich zuverlässiger oder sicherer, wird diese
-verwendet. Die Begründung gehört ins Ledger.
+If another method is demonstrably more reliable or safer in the specific case, that one is
+used. The rationale belongs in the ledger.
 
-## 11. Zuständigkeiten
+## 11. Responsibilities
 
-| Domäne | Agent |
+| Domain | Agent |
 |---|---|
-| Windows, PowerShell, Dienste, Registry, Treiber, UFO², UI Automation, COM | `windows-agent` |
-| Linux, SSH, Proxmox, Docker, Pterodactyl, Netzwerk, systemd, Ansible, OpenTofu | `infrastructure-agent` |
-| Playwright, Webpanels, Router-WebUI, Formulare, Browserdiagnose | `browser-agent` |
-| Minecraft, ARK, Gameserver, Mods, Plugins, Ports, Eggs | `gaming-agent` |
-| Code, Skripte, Refactoring, Bugfixes, Tests, Codex-Delegation | `implementation-agent` |
-| Unabhängige Kontrolle, ausschließlich read-only | `verification-agent` |
+| Windows, PowerShell, services, registry, drivers, UFO², UI automation, COM | `windows-agent` |
+| Linux, SSH, Proxmox, Docker, Pterodactyl, networking, systemd, Ansible, OpenTofu | `infrastructure-agent` |
+| Playwright, web panels, router web UI, forms, browser diagnostics | `browser-agent` |
+| Minecraft, ARK, game servers, mods, plugins, ports, eggs | `gaming-agent` |
+| Code, scripts, refactoring, bug fixes, tests, Codex delegation | `implementation-agent` |
+| Independent control, read-only only | `verification-agent` |
 
-Ein Agent besitzt die Schreibhoheit für einen State. Parallele Agenten dürfen unabhängig
-**untersuchen**, aber nicht gleichzeitig denselben State ändern.
+One agent holds write authority for a given state. Parallel agents may independently
+**investigate**, but may not change the same state at the same time.
 
 ## 12. Least Privilege
 
-Jeder Agent erhält nur die Rechte und Werkzeuge, die er braucht. Keine pauschalen Administrator-
-oder Root-Rechte. Der `verification-agent` erhält ausschließlich Leserechte.
+Every agent gets only the rights and tools it needs. No blanket administrator or
+root rights. The `verification-agent` receives read rights only.
 
-Admin-pflichtige Aktionen laufen über einen sichtbaren UAC-Prompt pro Aktion. Kein dauerhaft
-erhöhter Agentenprozess, keine vorab erhöhte Scheduled Task für allgemeine Zwecke.
+Admin-required actions run through a visible UAC prompt per action. No permanently
+elevated agent process, no pre-elevated scheduled task for general purposes.
 
-## 13. Objective Tests vor KI-Verifikation
+## 13. Objective Tests Before AI Verification
 
-Objektive Prüfungen kommen **immer** vor jeder KI-Bewertung.
+Objective checks **always** come before any AI assessment.
 
-- **Windows** — Dienststatus erneut lesen, Registry-Wert erneut lesen, Treiberversion, Gerätecode, Event Log, Datei-Diff
-- **Linux** — `systemctl`, Prozesse, Ports, Logs, Syntaxcheck, Paketversion
-- **Browser** — DOM, Accessibility-Baum, erwarteter Zustand, HTTP-Response
-- **Proxmox** — API-State, VM-Status, Ressourcen, Boot, Netzwerk
-- **Pterodactyl** — API, Wings-Erreichbarkeit, Container, Port, Logs, tatsächliche Serverantwort
+- **Windows** — re-read service status, re-read registry value, driver version, device code, event log, file diff
+- **Linux** — `systemctl`, processes, ports, logs, syntax check, package version
+- **Browser** — DOM, accessibility tree, expected state, HTTP response
+- **Proxmox** — API state, VM status, resources, boot, network
+- **Pterodactyl** — API, Wings reachability, container, port, logs, actual server response
 
-## 14. Unabhängige Verifikation
+## 14. Independent Verification
 
-Der Verifier erhält: ursprüngliches Ziel, Task Contract, Acceptance Criteria, Vorher-Zustand,
-Nachher-Zustand, rohe Evidenz. Er erhält **nicht** die Einschätzung des Executors.
+The verifier receives: original goal, task contract, acceptance criteria, before state,
+after state, raw evidence. It does **not** receive the executor's assessment.
 
-Sein Auftrag ist, einen Fehler zu finden — nicht, die Begründung zu bestätigen.
+Its mandate is to find an error — not to confirm the reasoning.
 
-Ergebnis ist genau eines von: `PASS` · `FAIL` · `INCONCLUSIVE`, dazu Evidenz, Abweichungen,
-mögliche Ursache. Bei `FAIL` oder `INCONCLUSIVE` erfolgt **keine** Erfolgsmeldung. Die Aufgabe geht
-an einen Executor zurück. Der Verifier repariert niemals selbst.
+The result is exactly one of: `PASS` · `FAIL` · `INCONCLUSIVE`, plus evidence, deviations,
+possible cause. On `FAIL` or `INCONCLUSIVE`, **no** success is reported. The task goes
+back to an executor. The verifier never fixes anything itself.
 
-## 15. Fehlerbehandlung und Retry Budget
+## 15. Error Handling and Retry Budget
 
-Keine blinden Wiederholungen. Bei Fehler:
+No blind retries. On error:
 
-1. Fehlerdaten erfassen → 2. klassifizieren → 3. Root Cause untersuchen → 4. Version/API/UI prüfen
-→ 5. Experience Store prüfen → 6. gezielter zweiter Versuch → 7. bei gleichem Fehler **Methode
-wechseln** → 8. ggf. anderer Agent → 9. ggf. Cross-Model → 10. ggf. Rollback
+1. capture error data → 2. classify → 3. investigate root cause → 4. check version/API/UI
+→ 5. check Experience Store → 6. targeted second attempt → 7. on the same error, **switch
+method** → 8. if needed, a different agent → 9. if needed, cross-model → 10. if needed, rollback
 
-Dieselbe fehlgeschlagene Methode wird höchstens zweimal versucht, der zweite Versuch nur mit
-korrigierter Ursache. Danach Methodenwechsel, dann Eskalation oder Rollback. Keine Endlosschleifen.
+The same failed method is attempted at most twice, the second attempt only with a
+corrected cause. After that, switch method, then escalate or roll back. No infinite loops.
 
-## 16. Cross-Model-Verifikation
+## 16. Cross-Model Verification
 
-Bei wichtigen Aufgaben und verfügbarem Kontingent prüft das jeweils andere Frontier-Modell
-unabhängig nach den Objective Tests. Sinnvoll bei Infrastruktur, Netzwerk, kritischer
-Serverkonfiguration, Migration, komplexem Fehler, großen Codeänderungen. **Nicht** für Triviales.
+For important tasks and when quota is available, the respective other frontier model
+independently checks after the objective tests. Sensible for infrastructure, network, critical
+server configuration, migration, complex errors, large code changes. **Not** for trivial matters.
 
-## 17. Memory und Learning
+## 17. Memory and Learning
 
-Getrennte Ebenen:
+Separate layers:
 
-- **Auto Memory** — allgemeines technisches Wissen
-- **Agent Memory** — agentenspezifische Erkenntnisse
-- **Experience Store** — objektiv messbare Workflow-Erfahrung
-- **Skills** — lange Abläufe
-- **Rules** — Policies
+- **Auto Memory** — general technical knowledge
+- **Agent Memory** — agent-specific findings
+- **Experience Store** — objectively measurable workflow experience
+- **Skills** — long procedures
+- **Rules** — policies
 
-`CLAUDE.md` bleibt kurz. Abläufe gehören nicht hinein.
+`CLAUDE.md` stays short. Procedures do not belong there.
 
-Neue Erkenntnisse starten als `CANDIDATE`. Erst nach objektiver Bestätigung `VERIFIED`. Veraltete
-werden `DEPRECATED` und **nicht** stillschweigend weiterverwendet.
+New findings start as `CANDIDATE`. Only after objective confirmation do they become `VERIFIED`.
+Outdated ones become `DEPRECATED` and are **not** silently used further.
 
-Zu jeder Erfahrung gehört ein Environment Fingerprint (Windows-Build, Versionen der beteiligten
-Werkzeuge, API-Versionen). Alte Erfahrung wird nur bevorzugt, wenn der Environment Match
-ausreicht.
+Every piece of experience carries an environment fingerprint (Windows build, versions of the
+tools involved, API versions). Old experience is only preferred if the environment match
+is sufficient.
 
-**Obsidian-Vault als persönliches Gedächtnis des Benutzers.** Der konfigurierte Vault
-(`AGENTSYSTEM_VAULT`) ist das zweite Gehirn des Benutzers, keine Kopie dieser Policy.
-Während längerer Aufgaben und nicht erst am Ende einer Session von sich aus prüfen, ob etwas
-entstanden ist, das dort hingehört — abgeschlossene Projektschritte, Entscheidungen mit Begründung,
-neue dauerhaft verwaltete Systeme, offene Punkte für die nächste Session. Nicht jede Kleinigkeit,
-aber auch nicht nur auf ausdrückliche Anweisung warten. Struktur, Dateibenennung und sonstige
-Schreibregeln stehen in der dortigen `CLAUDE.md` und gelten unverändert; diese Datei hier bleibt für
-den Vault maßgeblich nur für das folgende Statusmodell und für alles rund um `C:\AgentSystem` selbst,
-nicht für die persönlichen Notizen des Benutzers.
+**Obsidian vault as the user's personal memory.** The configured vault
+(`AGENTSYSTEM_VAULT`) is the user's second brain, not a copy of this policy.
+During longer tasks, and not only at the end of a session, proactively check whether something
+has emerged that belongs there — completed project steps, decisions with rationale,
+new permanently managed systems, open points for the next session. Not every trivial detail,
+but also not only on explicit instruction. Structure, file naming, and other
+writing rules are in the `CLAUDE.md` there and apply unchanged; this file here remains
+authoritative for the vault only regarding the following status model and everything around
+`C:\AgentSystem` itself, not for the user's personal notes.
 
-**Statusmodell für automatisch geschriebenes Wissen.** Schreibt ein Agent produktives Faktenwissen in
-den Vault (Systeme, Geräte, Projekte, Entscheidungen — nicht die privaten Notizen des Benutzers), bekommt der
-Eintrag ein YAML-Frontmatter mit mindestens `type`, `entity`, `status`, `confidence`, `source_type`,
-`valid_from`, `last_verified`. Status ist eines von: `current` · `planned` · `tested` · `historical` ·
-`superseded` · `rejected` · `needs_review` · `hypothesis`. Eine unbelegte Vermutung wird als
-`hypothesis` markiert, **nicht** als Fakt geschrieben.
+**Status model for automatically written knowledge.** When an agent writes productive factual
+knowledge into the vault (systems, devices, projects, decisions — not the user's private notes),
+the entry gets YAML frontmatter with at least `type`, `entity`, `status`, `confidence`,
+`source_type`, `valid_from`, `last_verified`. Status is one of: `current` · `planned` · `tested` ·
+`historical` · `superseded` · `rejected` · `needs_review` · `hypothesis`. An unsubstantiated
+assumption is marked as `hypothesis`, **not** written as fact.
 
-**Verbindlicher Second-Brain-Schreibweg.** Agenten schreiben neue Fakten nicht direkt produktiv,
-sondern legen zuerst einen versionierten Knowledge Candidate in `state/knowledge-candidates/pending`
-an. Nur der Archivist-Pfad darf ihn nach Prüfung, Task Contract, Entity-Lock, Quellenvergleich,
-Backup und Optimistic-Concurrency-Test in eine verwaltete Vault-Notiz übernehmen. Unverwaltete
-Notizen, `05 Daily Notes` und private Inhalte werden weder automatisch indiziert noch verändert.
-Automatischer Kontext stammt ausschließlich aus verwalteten Notizen und führt relativen Quellpfad,
-SHA-256, Status und `last_verified` mit. Konflikte werden sichtbar gemacht, nicht still aufgelöst.
+**Mandatory second-brain write path.** Agents do not write new facts directly into production,
+but first create a versioned knowledge candidate in `state/knowledge-candidates/pending`.
+Only the archivist path may, after review, task contract, entity lock, source comparison,
+backup, and optimistic-concurrency test, move it into a managed vault note. Unmanaged
+notes, `05 Daily Notes`, and private content are neither automatically indexed nor modified.
+Automatic context comes exclusively from managed notes and carries the relative source path,
+SHA-256, status, and `last_verified` along with it. Conflicts are made visible, not silently resolved.
 
-**Verpflichtende Abschlussprüfung.** Vor jedem `COMMITTED` eines formalen Task Contracts läuft der
-automatisch auffindbare Skill `knowledge-review`. Er dokumentiert genau eines von: `none` (kein
-dauerhaft relevantes Wissen), `captured` (über den Archivist akzeptierte Candidate-IDs) oder
-`deferred` (relevanter Candidate bleibt wegen Konflikt oder fehlender Bestätigung sichtbar offen).
-Ohne dieses append-only Review-Ereignis blockiert das Commit-Gate den Abschluss.
+**Mandatory completion check.** Before every `COMMITTED` of a formal task contract, the
+automatically discoverable skill `knowledge-review` runs. It documents exactly one of: `none`
+(no permanently relevant knowledge), `captured` (candidate IDs accepted via the archivist), or
+`deferred` (a relevant candidate remains visibly open due to conflict or missing confirmation).
+Without this append-only review event, the commit gate blocks completion.
 
-Das persönliche Plugin `shared-memory` stellt denselben verwalteten Lese- und Archivist-Schreibpfad
-lokal in Codex bereit. ChatGPT erhält ihn erst, wenn der zugehörige Dienst als cloud-erreichbares,
-verbundenes Plugin/MCP tatsächlich installiert und objektiv getestet ist. Bis dahin fordert die
-kontoweite Personalisierung die Knowledge Review an, kann aber keinen lokalen Zugriff erzeugen.
-In ChatGPT ist die Prüfung modellgesteuert und daher kein technisch harter Plattform-Hook; der harte
-`COMMITTED`-Blocker gilt für formale AgentSystem-Tasks. Diese Grenze darf nie als Vollgarantie für
-beliebige ChatGPT-Chats dargestellt werden.
+The personal plugin `shared-memory` provides the same managed read and archivist write path
+locally in Codex. ChatGPT only gets it once the corresponding service is actually installed and
+objectively tested as a cloud-reachable, connected plugin/MCP. Until then, the account-wide
+personalization requests the Knowledge Review but cannot create local access.
+In ChatGPT the check is model-driven and therefore not a technically hard platform hook; the hard
+`COMMITTED` blocker applies to formal AgentSystem tasks. This boundary must never be presented as
+a full guarantee for arbitrary ChatGPT chats.
 
-Quellenpriorität, höchste zuerst: eigene Messung/ausdrücklich bestätigte Information ·
-tatsächliche lokale Konfiguration/Datei · Hersteller-/offizielle Dokumentation · belastbare
-Fachquelle · Händlerangabe · Community/Forum · Agenten-Schlussfolgerung · ungeprüfte Hypothese. Eine
-schwächere Quelle überschreibt nie eine stärkere; ein Widerspruch wird als Konflikt vermerkt
-(`needs_review`), nicht stillschweigend zugunsten der neueren Quelle aufgelöst.
+Source priority, highest first: own measurement/explicitly confirmed information ·
+actual local configuration/file · manufacturer/official documentation · reliable
+specialist source · vendor statement · community/forum · agent inference · unverified hypothesis. A
+weaker source never overrides a stronger one; a contradiction is recorded as a conflict
+(`needs_review`), not silently resolved in favor of the newer source.
 
-Vor jedem neuen Eintrag wird geprüft, ob die Entität bereits existiert — aktualisieren statt
-duplizieren. Ein überholter Stand wird auf `superseded`/`historical` gesetzt, nicht überschrieben
-oder gelöscht. Lesen ist breit erlaubt, jeder Agent darf den Vault durchsuchen. Ein Statuswechsel auf
-`current` oder eine faktische Neuanlage ist mindestens R1 und läuft über Preflight/Objective Test wie
-jede andere Änderung ab R1 (§6) — kein Sonderpfad am Transaktionsprinzip vorbei.
+Before every new entry, it is checked whether the entity already exists — update instead of
+duplicate. An outdated state is set to `superseded`/`historical`, not overwritten
+or deleted. Reading is broadly permitted; every agent may search the vault. A status change to
+`current` or a factual new entry is at least R1 and runs through Preflight/Objective Test like
+every other change from R1 upward (§6) — no special path around the transaction principle.
 
-## 18. Desired State und Drift
+## 18. Desired State and Drift
 
-Für dauerhaft verwaltete Ressourcen wird ein Soll-Zustand gepflegt. Ist- gegen Soll-Zustand wird
-verglichen, Drift wird **gemeldet**. Drift wird **nicht** automatisch repariert, bevor geprüft ist,
-ob sie beabsichtigt war.
+For permanently managed resources, a desired state is maintained. Actual state is compared
+against desired state, drift is **reported**. Drift is **not** automatically repaired before it is
+checked whether it was intentional.
 
 ## 19. Run Ledger
 
-Jede relevante Aufgabe wird nachvollziehbar protokolliert: `run_id`, `task_id`, Zeitstempel, Ziel,
-Agent, Tool, Methode, Risk Level, Locks, Baseline, Änderung, Objective Tests, Verification,
-Ergebnis, Dauer, Retries, Fehler, Rollback, Environment Fingerprint.
+Every relevant task is traceably logged: `run_id`, `task_id`, timestamp, goal,
+agent, tool, method, risk level, locks, baseline, change, objective tests, verification,
+result, duration, retries, errors, rollback, environment fingerprint.
 
-Alte Runs werden nicht still verändert. Keine Secrets.
+Old runs are not silently changed. No secrets.
 
 ## 20. Secrets
 
-**Niemals** speichern in: Git, `AGENTS.md`, `CLAUDE.md`, Skills, Agent Memory, Experience Store,
-Run Ledger, Logs.
+**Never** store in: Git, `AGENTS.md`, `CLAUDE.md`, Skills, Agent Memory, Experience Store,
+Run Ledger, logs.
 
-Betroffen: Passwörter, API-Tokens, SSH Private Keys, Browser-Sessions, Recovery Keys, Cookies,
-Storage State.
+Affected: passwords, API tokens, SSH private keys, browser sessions, recovery keys, cookies,
+storage state.
 
-Secrets liegen im Windows Credential Manager und werden nur dem Agenten gegeben, der sie
-tatsächlich braucht. Backups mit potenziellen Credentials werden auf den Besitzer beschränkt.
+Secrets live in the Windows Credential Manager and are given only to the agent that
+actually needs them. Backups with potential credentials are restricted to the owner.
 
 ## 21. Update Policy
 
 ```
-Update verfügbar → Changelog prüfen → Relevanz prüfen → Backup → isolierter Test
-                → Smoke Tests → Regression Tests → Verification → übernehmen
+Update available → check changelog → check relevance → backup → isolated test
+                → smoke tests → regression tests → verification → adopt
 ```
 
-Ist die neue Version schlechter, bleibt die Known-Good-Version. Kein dauerhaftes blindes `latest`.
+If the new version is worse, the known-good version stays. No permanent blind `latest`.
 
-Regression-Evals laufen nach jeder Änderung an: Skill, Agent-Prompt, Adapter, Routing, Hook,
-Tool-Update, UFO-Update, Playwright-Update. Eine neue Version wird nur produktiv, wenn sie **nicht
-schlechter** ist.
+Regression evals run after every change to: skill, agent prompt, adapter, routing, hook,
+tool update, UFO update, Playwright update. A new version only goes into production if it is
+**not worse**.
 
-## 22. Selbstwartung
+## 22. Self-Maintenance
 
-Das System darf Verbesserungen erkennen und vorschlagen: defekte Skills und Hooks, schlechte
-Routingentscheidungen, langsame Workflows, überflüssige Agenten, veraltete Adapter, wiederkehrende
-Fehler, fehlende Tests, Drift, hohe Retry-Raten.
+The system may recognize and propose improvements: broken skills and hooks, poor
+routing decisions, slow workflows, redundant agents, outdated adapters, recurring
+errors, missing tests, drift, high retry rates.
 
-Automatische Selbständerungen durchlaufen denselben Ablauf wie jede andere Änderung:
-Plan → Baseline → Backup → Änderung → Regression → Verification → Commit.
-Keine unkontrollierte Selbstmodifikation. Die Control Plane (`AGENTS.md` Abschnitte 4, 5, 12, 20,
-`.claude/settings.json`, `.claude/hooks/`) ist besonders geschützt.
+Automatic self-changes go through the same process as any other change:
+plan → baseline → backup → change → regression → verification → commit.
+No uncontrolled self-modification. The control plane (`AGENTS.md` sections 4, 5, 12, 20,
+`.claude/settings.json`, `.claude/hooks/`) is specially protected.
 
-## 23. Effizienz
+## 23. Efficiency
 
-- Nur benötigten Kontext laden; keine vollständigen Logs, wenn Ausschnitte reichen
-- Experience Store zuerst prüfen, Known-Good-Methode bevorzugen
-- Wiederkehrende Verfahren als Skill statt als wiederholte Improvisation
-- Große Untersuchungen in getrennten Kontexten, kompaktes Ergebnis an den Lead zurück
-- Keine parallelen Agenten ohne Mehrwert
-- Premiumkontingent nicht für Triviales verbrauchen
-- Strukturierte Werkzeuge statt Screenshot-Schleifen
+- Load only needed context; no full logs when excerpts suffice
+- Check the Experience Store first, prefer the known-good method
+- Recurring procedures as a skill instead of repeated improvisation
+- Large investigations in separate contexts, compact result back to the lead
+- No parallel agents without added value
+- Do not burn premium quota on trivial matters
+- Structured tools instead of screenshot loops
 
-## 24. Ergebnisformat für Subagenten
+## 24. Result Format for Subagents
 
-Jeder Subagent antwortet strukturiert. „Alles erledigt" ohne Evidenz ist keine gültige Antwort.
+Every subagent responds in a structured way. "All done" without evidence is not a valid response.
 
 ```
 STATUS:      PASS | FAIL | INCONCLUSIVE
-EVIDENCE:    rohe Ausgaben, Pfade, Versionen
-CHANGES:     was tatsächlich geändert wurde
-TESTS:       welche objektiven Tests liefen, mit Ergebnis
-RISKS:       verbleibende Risiken und Unsicherheiten
-NEXT_ACTION: konkreter nächster Schritt
+EVIDENCE:    raw outputs, paths, versions
+CHANGES:     what was actually changed
+TESTS:       which objective tests ran, with result
+RISKS:       remaining risks and uncertainties
+NEXT_ACTION: concrete next step
 ```

@@ -1,167 +1,167 @@
-# Systemdokumentation
+# System Documentation
 
-Alle Angaben sind am Rechner gemessen, nicht angenommen.
+All statements are measured on the machine, not assumed.
 
 ---
 
-## 1. Entstehung
+## 1. Origin
 
-Dieses System entstand als Nachfolger eines vorherigen, lokalen Multi-Agenten-
-Setups aus mehreren lokalen LLM-Werkzeugen, UFO² und einem eigenen
-Orchestrierungs-Overlay. Übernommen wurden daraus:
+This system originated as the successor to a previous, local multi-agent
+setup made up of several local LLM tools, UFO², and a custom orchestration
+overlay. Carried over from it:
 
-- Der Operating Contract — inhaltlich überarbeitet, anbieterneutral
-  formuliert und um Rollback, Locks und Task Contract erweitert
-- Die Agentenbeschreibungen, verdichtet auf sechs Claude-Subagenten
-- Routing- und Learning-Konzept: Klassifikation, Eskalation nur als Neu-Spawn
-  mit Evidenz, verifier-gated Learning
-- Knowledge- und Metrik-Schemata
-- Das Restore-Point-Muster mit SHA256-Manifest und Dry-Run-Restore
-- Codex als zweites Frontier-Modell über eine read-only-Sandbox mit aktiv
-  entfernten API-Schlüsseln
-- UFO² als Windows-Aktionsschicht
+- The operating contract — revised in content, phrased provider-neutrally,
+  and extended with rollback, locks, and task contract
+- The agent descriptions, condensed to six Claude subagents
+- Routing and learning concept: classification, escalation only as a
+  new spawn with evidence, verifier-gated learning
+- Knowledge and metric schemas
+- The restore-point pattern with SHA256 manifest and dry-run restore
+- Codex as the second frontier model via a read-only sandbox with actively
+  removed API keys
+- UFO² as the Windows action layer
 
-Lokale LLM-Werkzeuge, die nicht mehr gebraucht wurden, wurden vollständig
-deinstalliert; nur Upstream-Komponenten von UFO² blieben unverändert erhalten.
+Local LLM tools that were no longer needed were fully uninstalled; only
+upstream components of UFO² were kept unchanged.
 
-## 2. Aufbau
+## 2. Structure
 
 ```
-Repo-Wurzel
-├── AGENTS.md                     anbieterneutrale Systempolicy, 24 Abschnitte
-├── CLAUDE.md                     kurz; bindet AGENTS.md über @AGENTS.md ein
+Repo root
+├── AGENTS.md                     provider-neutral system policy, 24 sections
+├── CLAUDE.md                     short; pulls in AGENTS.md via @AGENTS.md
 ├── .claude/
-│   ├── settings.json             Berechtigungen und Hooks
-│   ├── agents/                   6 Subagenten
-│   ├── skills/                   12 Skills
-│   └── hooks/                    Hook-Skripte + hooklib
+│   ├── settings.json             permissions and hooks
+│   ├── agents/                   6 subagents
+│   ├── skills/                   12 skills
+│   └── hooks/                    hook scripts + hooklib
 ├── bin/
 │   ├── agentsys/                 paths, policy, ledger, locks, fingerprint, experience, ...
-│   └── agentctl.py               Kommandozeile der Control Plane
+│   └── agentctl.py               command line of the control plane
 ├── adapters/
 │   ├── ufo/                      ufoctl.py (CLI) + ufo_mcp.py (MCP)
 │   ├── playwright/                pwctl.mjs (CLI) + @playwright/mcp
-│   └── memory/                   MCP-Zugriff auf den verwalteten Second-Brain-Speicher
-├── .mcp.json                     MCP-Server fuer exploratives Arbeiten
-├── schemas/                      JSON-Schemata fuer Knowledge/Context/Eval/Metric
-├── evals/                        Eval-Faelle fuer Regressionspruefung
-├── tests/                        Testsuiten, run-all.py
+│   └── memory/                   MCP access to the managed Second Brain store
+├── .mcp.json                     MCP server for exploratory work
+├── schemas/                      JSON schemas for knowledge/context/eval/metric
+├── evals/                        eval cases for regression checking
+├── tests/                        test suites, run-all.py
 └── docs/
 ```
 
-`state/` (Ledger, Locks, Erfahrungen, Known-Good, Backups) ist Laufzeitzustand
-eines konkreten Betreibers und deshalb nicht Teil dieses Repos — siehe
+`state/` (ledger, locks, experience, known-good, backups) is the runtime
+state of a specific operator and is therefore not part of this repo — see
 `.gitignore`.
 
-### Subagenten
+### Subagents
 
 `windows-agent` · `infrastructure-agent` · `browser-agent` · `gaming-agent` ·
 `implementation-agent` · `verification-agent`
 
-Keiner verdrahtet ein Modell — das erzwingt `tests/test_config.py`. Der
-`verification-agent` führt `Write`, `Edit` und `NotebookEdit` in
-`disallowedTools` und hat zusätzlich einen eigenen `PreToolUse`-Hook, der
-schreibende Shell-Kommandos verweigert. Werkzeugbeschränkungen allein hätten
-die Shell nicht erfasst.
+None of them hard-wires a model — `tests/test_config.py` enforces this. The
+`verification-agent` lists `Write`, `Edit`, and `NotebookEdit` in
+`disallowedTools` and additionally has its own `PreToolUse` hook that denies
+write-capable shell commands. Tool restrictions alone would not have covered
+the shell.
 
 ### Skills
 
-**Ablauf:** `preflight-change`, `verify-change`, `diagnose-failure`,
+**Workflow:** `preflight-change`, `verify-change`, `diagnose-failure`,
 `rollback-change`
 **Routing:** `windows-admin`, `browser-admin`, `infrastructure-admin`
-**Ausführung:** `ufo-windows`, `playwright-web`
-**Lernen:** `knowledge-review`, `model-routing`
-**Wartung:** `update-agent-stack`
+**Execution:** `ufo-windows`, `playwright-web`
+**Learning:** `knowledge-review`, `model-routing`
+**Maintenance:** `update-agent-stack`
 
 ### Hooks
 
-| Ereignis | Zweck |
+| Event | Purpose |
 |---|---|
-| `SessionStart` | offene Tasks, Locks, Checkpoint, veraltete Erfahrungen |
-| `PreToolUse` | Policy Guard, deterministisch |
-| `PermissionRequest` | lesende Kommandos erlauben, Rest nachfragen |
-| `PostToolUseFailure` | Fehlerfingerabdruck, warnt bei Wiederholung |
-| `TaskCreated` | erinnert bei riskanten Aufgaben an den Task Contract |
-| `TaskCompleted` | blockiert Abschluss bei offenem, geändertem R3-Vorgang |
-| `SubagentStop` | erzwingt strukturiertes Ergebnis |
-| `ConfigChange` | schützt Hooks, Berechtigungen, Umgebungsvariablen |
-| `UserPromptSubmit` | Routing-Hinweise für die aktuelle Anfrage |
+| `SessionStart` | open tasks, locks, checkpoint, stale experience entries |
+| `PreToolUse` | policy guard, deterministic |
+| `PermissionRequest` | allow read-only commands, ask for the rest |
+| `PostToolUseFailure` | error fingerprint, warns on repetition |
+| `TaskCreated` | reminds about the task contract for risky tasks |
+| `TaskCompleted` | blocks completion when an open, changed R3 operation exists |
+| `SubagentStop` | enforces a structured result |
+| `ConfigChange` | protects hooks, permissions, environment variables |
+| `UserPromptSubmit` | routing hints for the current request |
 
-`tests/test_config.py` hält die Liste der real existierenden Hook-Ereignisse
-und schlägt bei einem erfundenen Namen an.
+`tests/test_config.py` holds the list of actually existing hook events and
+flags any invented name.
 
 ### Policy Guard
 
-Regelbasiert, ohne Modellaufruf, ohne Netzwerk. DENY-Regeln (Datenträger,
-Partitionen, Bootloader, Firmware, Datenbank- und Kontolöschung, destruktives
-Git, SSH-Schlüssel, API-Schlüssel, Berechtigungsumgehung), ASK-Regeln
-(Dienste, Registry, Treiber, Firewall, Netzwerk, Pakete, Elevation, Neustart),
-und eine Allowlist bekannter lesender Kommandos.
+Rule-based, without a model call, without network access. DENY rules (disks,
+partitions, bootloader, firmware, database and account deletion, destructive
+Git, SSH keys, API keys, permission bypass), ASK rules (services, registry,
+drivers, firewall, network, packages, elevation, restart), and an allowlist
+of known read-only commands.
 
-Eine Kommandoverkettung hebt die Allowlist auf: `git status; rm -rf /` wird
-verweigert, nicht erlaubt.
+A command chain lifts the allowlist: `git status; rm -rf /` is denied, not
+allowed.
 
-Der Control-Plane-Schutz greift auch dann, wenn die konfigurierte
-Installationswurzel umgebogen wird — die feste Wurzel wird immer mitgeprüft.
+The control-plane protection also applies when the configured installation
+root is redirected — the fixed root is always checked as well.
 
-### Run Ledger und Zustand
+### Run Ledger and state
 
-SQLite mit WAL: `tasks`, `runs`, `events`. Ereignisse werden nur angehängt, nie
-verändert. Kommandotexte laufen vor dem Schreiben durch eine Redaction für
-API-Keys, Tokens und Passwörter.
+SQLite with WAL: `tasks`, `runs`, `events`. Events are append-only, never
+altered. Command text passes through redaction for API keys, tokens, and
+passwords before being written.
 
-Zustände: `RECEIVED → PLANNED → PREFLIGHT → LOCKED → BASELINED → BACKED_UP →
-EXECUTING → OBJECTIVE_TEST → INDEPENDENT_VERIFY → COMMITTED`, Fehlerpfad
+States: `RECEIVED → PLANNED → PREFLIGHT → LOCKED → BASELINED → BACKED_UP →
+EXECUTING → OBJECTIVE_TEST → INDEPENDENT_VERIFY → COMMITTED`, error path
 `FAILED_STEP → DIAGNOSING → RETRY_ALTERNATIVE → ROLLING_BACK → ROLLED_BACK →
 FAILED`.
 
 ### Resource Locks
 
-Atomar über `O_EXCL`. Zwei Besitzarten:
+Atomic via `O_EXCL`. Two ownership kinds:
 
-- `process` — verwaist, wenn der haltende Prozess nicht mehr läuft
-- `task` — verwaist **nur**, wenn der Task abgeschlossen ist
+- `process` — orphaned when the holding process is no longer running
+- `task` — orphaned **only** when the task is completed
 
-Diese Unterscheidung entstand aus einem Fehler, den erst der Smoke-Test
-aufdeckte: CLI-Locks waren sofort verwaist, weil der setzende Prozess endet.
-Der Schutz war wirkungslos. Siehe `known-issues.md`.
+This distinction arose from a bug that only the smoke test uncovered: CLI
+locks were orphaned immediately, because the setting process ends. The
+protection was ineffective. See `known-issues.md`.
 
 ### Experience Store
 
-`CANDIDATE → VERIFIED → DEPRECATED`. Jeder Eintrag trägt einen Environment
-Fingerprint (Windows-Build, Claude-Code, UFO-Commit, Playwright, Python, Node,
-npm, Git, Docker, Codex). `best_method` sortiert nach Status, dann Erfolgsrate,
-erst dann Dauer — Zuverlässigkeit vor Geschwindigkeit. Erfahrungen mit
-abweichender Umgebung werden ausgeschlossen und beim Sessionstart gemeldet.
+`CANDIDATE → VERIFIED → DEPRECATED`. Every entry carries an environment
+fingerprint (Windows build, Claude Code, UFO commit, Playwright, Python,
+Node, npm, Git, Docker, Codex). `best_method` sorts by status, then success
+rate, only then duration — reliability before speed. Experience entries with
+a diverging environment are excluded and reported at session start.
 
-## 3. Adapter
+## 3. Adapters
 
 **UFO²** (`ufoctl.py`) — `windows`, `controls`, `tree`, `texts`, `click`,
 `type`, `keys`, `scroll`, `screenshot`, `plan`, `tools`, `inspect`.
-Der Shell-Executor von UFO ist ausdrücklich **nicht** exponiert: Shell läuft
-über Bash und PowerShell durch den Policy Guard, ein zweiter Weg würde ihn
-umgehen. `inspect` misst über pywinauto an UFO vorbei — nötig, weil UFOs eigene
-Steuerelementliste den Accessible Name statt des lebenden Werts meldet.
+UFO's shell executor is deliberately **not** exposed: shell runs through
+Bash and PowerShell through the policy guard; a second path would bypass it.
+`inspect` measures via pywinauto, bypassing UFO — necessary because UFO's
+own control list reports the accessible name instead of the live value.
 
 **Playwright** (`pwctl.mjs`) — `snapshot`, `text`, `http`, `click`, `fill`,
-`login`, `screenshot`, `plan`. Lokal installiert statt global `latest`.
-Lokalisierung über Accessibility-Rollen; Selektoren sind letzte Wahl,
-Screenshots Fallback. Mehrdeutige Lokalisierer brechen ab, statt zu raten.
+`login`, `screenshot`, `plan`. Installed locally instead of global `latest`.
+Localization via accessibility roles; selectors are the last resort,
+screenshots the fallback. Ambiguous locators abort instead of guessing.
 
-**Codex** — über ein offizielles, projektweites Plugin angebunden. Delegation
-und Sitzungsübergabe laufen über eigene Slash-Befehle. Die Projektumgebung
-neutralisiert `OPENAI_API_KEY` und `CODEX_API_KEY`, damit kein
-kostenpflichtiger API-Zugang automatisch übernommen wird.
+**Codex** — connected via an official, project-wide plugin. Delegation and
+session handoff run through dedicated slash commands. The project
+environment neutralizes `OPENAI_API_KEY` and `CODEX_API_KEY`, so that no
+paid API access is picked up automatically.
 
 ## 4. Second Brain
 
-Siehe `second-brain-architecture.md` für den vollständigen Knowledge-
-Candidate-Ablauf: Beobachtung → Kandidat → Archivist-Prüfung → verwaltete
-Notiz, mit Single-Writer-Pfad, Quellenpriorität und Optimistic Concurrency.
+See `second-brain-architecture.md` for the full knowledge candidate
+workflow: observation → candidate → archivist review → managed note, with
+single-writer path, source priority, and optimistic concurrency.
 
-## 5. Backup und Rollback
+## 5. Backup and Rollback
 
-Ein Betreiber-Repo ist ein Git-Repo: Rollback über `git revert`, nicht über
-`reset --hard` — der Policy Guard verweigert Letzteres. Vor riskanten
-Änderungen entstehen zusätzlich dateisystemseitige Restore-Points mit
-SHA-256-Manifest, außerhalb der Versionskontrolle.
+An operator repo is a Git repo: rollback via `git revert`, not via
+`reset --hard` — the policy guard denies the latter. Before risky changes,
+additional filesystem-level restore points with a SHA-256 manifest are also
+created, outside version control.

@@ -253,10 +253,10 @@
     ]
   },
   "$comment": [
-    "Control Plane des Agentensystems. Änderungen hier laufen über den",
-    "Wartungsablauf: Baseline, Backup, Änderung, Regression, Verifikation, Commit.",
-    "Der ConfigChange-Hook blockiert beiläufige Änderungen an hooks/permissions/env.",
-    "Hook-Pfade sind absolut, weil die Expansion von $CLAUDE_PROJECT_DIR unter",
-    "Windows je nach Shell abweichen kann und Verlässlichkeit hier Vorrang hat."
+    "Control plane of the agent system. Changes here go through the",
+    "maintenance workflow: baseline, backup, change, regression, verification, commit.",
+    "The ConfigChange hook blocks incidental changes to hooks/permissions/env.",
+    "Hook paths are absolute because the expansion of $CLAUDE_PROJECT_DIR can",
+    "vary by shell on Windows, and reliability takes priority here."
   ]
 }

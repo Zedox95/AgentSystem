@@ -1,4 +1,4 @@
-"""Tests fuer Skill-Kandidaten ohne automatische Produktivschaltung."""
+"""Tests for skill candidates without automatic production activation."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-skills-"))
 os.environ["AGENTSYSTEM_ROOT"] = str(TMP / "system")
 sys.path.insert(0, str(ROOT / "bin"))
@@ -47,12 +47,12 @@ duplicate = skills_pipeline.create_candidate(
     draft_skill_md=draft,
 )
 check(created["status"] == "CANDIDATE" and created["activation"] == "MANUAL_REVIEW_REQUIRED",
-      "Candidate darf nicht automatisch aktiviert werden")
-check(duplicate["duplicate"], "Identischer Entwurf muss dedupliziert werden")
+      "Candidate must not be activated automatically")
+check(duplicate["duplicate"], "Identical draft must be deduplicated")
 check(not hasattr(skills_pipeline, "promote"),
-      "Pipeline darf keine automatische Promote-Funktion anbieten")
+      "Pipeline must not offer an automatic promote function")
 check(not (paths.SKILLS_DIR / "service-diagnose").exists(),
-      "Entwurf darf nicht im produktiven Skill-Verzeichnis landen")
+      "Draft must not end up in the production skills directory")
 
 try:
     skills_pipeline.create_candidate(
@@ -70,9 +70,9 @@ before = sorted(str(path.relative_to(paths.ROOT)) for path in paths.ROOT.rglob("
 report = skills_pipeline.capability_report()
 after = sorted(str(path.relative_to(paths.ROOT)) for path in paths.ROOT.rglob("*"))
 check(before == after and report["mutations_performed"] == 0,
-      "Capability Report muss strikt read-only sein")
+      "Capability report must be strictly read-only")
 check(report["candidate_opportunities"][0]["key"] == "windows.service.diagnose",
-      "Wiederholte, unbestaetigte Erfahrung muss als Chance erscheinen")
+      "Repeated, unconfirmed experience must appear as an opportunity")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

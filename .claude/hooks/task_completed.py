@@ -1,12 +1,12 @@
-"""TaskCompleted — Erfolg ohne erfülltes Commit-Gate verhindern.
+"""TaskCompleted — prevent success without a satisfied commit gate.
 
-Exit 2 verhindert, dass ein Task als abgeschlossen markiert wird.
+Exit 2 prevents a task from being marked complete.
 
-Sobald an einem formalen R1-, R2- oder R3-Task Änderungen begonnen wurden,
-darf Claude Code den übergeordneten Task erst abschließen, wenn der Ledger den
-Vorgang als commit-ready bestätigt oder ein terminaler Fehler-/Rollbackzustand
-erreicht ist. Damit kann ein voreiliges COMMITTED nicht durch eine bloße
-Agentenaussage oder einen Exit-Code ersetzt werden.
+Once changes have begun on a formal R1, R2, or R3 task, Claude Code may
+only close the parent task once the ledger confirms the process as
+commit-ready, or a terminal failure/rollback state has been reached. This
+way a premature COMMITTED cannot be substituted by a mere agent statement
+or an exit code.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import sys
 
 import hooklib
 
-# Zustände, in denen bereits Änderungen erfolgt sein können.
+# States in which changes may already have occurred.
 CHANGED_STATES = ("EXECUTING", "OBJECTIVE_TEST", "FAILED_STEP",
                   "INDEPENDENT_VERIFY", "DIAGNOSING",
                   "RETRY_ALTERNATIVE", "ROLLING_BACK")
@@ -60,10 +60,10 @@ def main() -> None:
             for task, reasons in blocked
         )
         sys.stderr.write(
-            "Abschluss verhindert: Mindestens ein verändernder R1-R3-Task erfüllt "
-            f"das Commit-Gate nicht — {listing}. Erforderlich sind gültige "
-            "Zustandsfolge, Objective-Test-Evidenz, explizites Verifier-PASS und "
-            "eine dokumentierte Knowledge Review; alternativ ein vollständiger Rollback."
+            "Completion blocked: at least one change-making R1-R3 task does not "
+            f"satisfy the commit gate — {listing}. Required are a valid "
+            "state sequence, objective-test evidence, an explicit verifier PASS, and "
+            "a documented knowledge review; alternatively a complete rollback."
         )
         sys.exit(2)
 

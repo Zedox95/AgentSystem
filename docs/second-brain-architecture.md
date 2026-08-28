@@ -1,77 +1,76 @@
-# Second Brain und lernendes Agentensystem
+# Second Brain and Learning Agent System
 
-## Zielbild
+## Target picture
 
-Die Erweiterung trennt Datenverträge, Wissen, Kontext, Messung und Lernen. Das Second Brain ist
-kein ungeprüfter Chatverlauf: Nur strukturierte, quellenbelegte Fakten dürfen über einen
-kontrollierten Single-Writer-Pfad produktiv werden.
+The extension separates data contracts, knowledge, context, measurement, and learning. The Second
+Brain is not an unchecked chat history: only structured, source-backed facts may go live through a
+controlled single-writer path.
 
 ```text
-Beobachtung -> Knowledge Candidate -> Archivist-Prüfung -> verwaltete Vault-Notiz
+Observation -> Knowledge Candidate -> Archivist review -> managed vault note
                                               |
-                  Nur-Lese-Suche -> Context Builder -> Quellenpaket
+                  Read-only search -> Context Builder -> source package
                                               |
-                   Eval + Metric Events -> KPI-/Capability-Bericht
+                   Eval + Metric Events -> KPI/capability report
                                               |
-                           Skill Candidate -> manuelle Prüfung
+                           Skill Candidate -> manual review
 ```
 
-## Sicherheitsgrenzen
+## Safety boundaries
 
-- Schemas und Laufzeitverträge liegen in `schemas/` und `bin/agentsys/contracts.py`.
-- Neue Fakten starten in `state/knowledge-candidates/pending`.
-- Nur `knowledge.approve` schreibt in den verwalteten Wissensspeicher. Es verlangt einen offenen
-  R1+-Task, ein Entity-Lock, einen erwarteten Datei-Hash und bei bestehenden Notizen ein
-  verifiziertes Backup.
-- Schwächere Quellen überschreiben stärkere nicht. Frühere Werte bleiben als `superseded` erhalten.
-- Automatisch gelesen werden nur Markdown-Dateien mit vollständigem Status-Frontmatter.
-  Unverwaltete Notizen und private Bereiche bleiben ausgeschlossen.
-- Context Packages tragen Pfad, SHA-256, Status, Prüfdatum, Ranking und ein festes Tokenbudget.
-- Skill-Vorschläge landen nur unter `state/skill-candidates`. Es existiert kein automatischer
-  Aktivierungs- oder Promote-Pfad.
-- Der Supervisor prüft Ledger, Checkpoint, Locks, Kandidaten, Metriken, Evals, Wissensspeicher und
-  Indexdrift ausschließlich lesend. Er repariert nichts selbst.
+- Schemas and runtime contracts live in `schemas/` and `bin/agentsys/contracts.py`.
+- New facts start in `state/knowledge-candidates/pending`.
+- Only `knowledge.approve` writes to the managed knowledge store. It requires an open R1+ task, an
+  entity lock, an expected file hash, and, for existing notes, a verified backup.
+- Weaker sources do not overwrite stronger ones. Earlier values are kept as `superseded`.
+- Only Markdown files with complete status frontmatter are read automatically. Unmanaged notes and
+  private areas remain excluded.
+- Context packages carry path, SHA-256, status, verification date, ranking, and a fixed token
+  budget.
+- Skill proposals land only under `state/skill-candidates`. There is no automatic activation or
+  promotion path.
+- The supervisor checks the ledger, checkpoint, locks, candidates, metrics, evals, knowledge store,
+  and index drift in a strictly read-only manner. It fixes nothing itself.
 
-## Bedienung
+## Usage
 
-Alle Befehle geben maschinenlesbares JSON aus:
+All commands print machine-readable JSON:
 
 ```powershell
 agentctl knowledge submit --file candidate.json
 agentctl knowledge list --bucket pending
-agentctl knowledge search --query <suchbegriff> --entity <entity-id>
+agentctl knowledge search --query <search term> --entity <entity-id>
 agentctl knowledge approve --candidate-id kc-... --task-id task-... --expected-sha256 NEW
 agentctl knowledge review --task-id task-... --decision captured `
-  --review-candidate-id kc-... --reason "Bestätigter Systemstand übernommen"
+  --review-candidate-id kc-... --reason "Confirmed system state adopted"
 
-agentctl context build --query <suchbegriff> --entity <entity-id> --budget 2000
+agentctl context build --query <search term> --entity <entity-id> --budget 2000
 agentctl eval list
 agentctl metrics record --file metric.json
 agentctl metrics report
 
-agentctl skill-candidate create --name neuer-skill --rationale "..." `
-  --source-experience erfahrung.key --draft SKILL.md
+agentctl skill-candidate create --name new-skill --rationale "..." `
+  --source-experience experience.key --draft SKILL.md
 agentctl skill-candidate report
 agentctl supervisor check
 ```
 
-`knowledge reject` benötigt zusätzlich `--task-id` und `--reason`. Bei einer bestehenden Notiz im
-Wissensspeicher wird für `knowledge approve` der aktuell gemessene SHA-256 statt `NEW` übergeben.
+`knowledge reject` additionally requires `--task-id` and `--reason`. For an existing note in the
+knowledge store, `knowledge approve` is given the currently measured SHA-256 instead of `NEW`.
 
-Nach dem letzten abgeschlossenen Run und vor `COMMITTED` ist eine Knowledge Review verpflichtend.
-`none` dokumentiert begründet, dass kein
-dauerhafter Fakt entstand; `captured` verlangt unter demselben Task akzeptierte Candidate-IDs;
-`deferred` verweist auf pending oder rejected Candidates. `agentctl task readiness` zeigt alle noch
-fehlenden Commit-Voraussetzungen deterministisch an.
+After the last completed run and before `COMMITTED`, a knowledge review is mandatory.
+`none` documents with justification that no permanent fact was created; `captured` requires
+candidate IDs accepted under the same task; `deferred` refers to pending or rejected candidates.
+`agentctl task readiness` deterministically shows all commit prerequisites that are still missing.
 
-## Objektive Tests
+## Objective tests
 
-Die zentralen Regressionstests laufen über:
+The central regression tests run via:
 
 ```powershell
 python tests/run-all.py
 ```
 
-Enthalten sind Verträge, Candidate Queue, Single-Writer-Verhalten, Quellenpriorität,
-Optimistic Concurrency, Context-Reproduzierbarkeit, Budgetierung, Evals, KPI-Aggregation,
-Skill-Isolation, Supervisor-Erkennung und CLI-Smoke-Tests.
+Covered are contracts, the candidate queue, single-writer behavior, source priority,
+optimistic concurrency, context reproducibility, budgeting, evals, KPI aggregation,
+skill isolation, supervisor detection, and CLI smoke tests.

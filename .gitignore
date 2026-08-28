@@ -1,14 +1,8 @@
-# Laufzeitzustand: gehört nicht in die Versionskontrolle.
-state/ledger.sqlite
-state/ledger.sqlite-wal
-state/ledger.sqlite-shm
-state/checkpoint.json
-state/runs/
-state/locks/
-state/baselines/
-state/experiences/
+# Runtime state: does not belong in version control. Excluded wholesale
+# (not just the individual subdirectories) so that no new state/* folder
+# added later can accidentally slip into a commit.
+state/
 logs/
-state/browser-profiles/
 adapters/playwright/node_modules/
 
 # Python
@@ -16,10 +10,10 @@ __pycache__/
 *.py[cod]
 .venv/
 
-# Lokale Übersteuerungen enthalten oft Pfade oder Zugangswege.
+# Local overrides often contain paths or access credentials.
 .claude/settings.local.json
 
-# Niemals eingecheckt - siehe AGENTS.md Abschnitt 20.
+# Never checked in - see AGENTS.md section 20.
 *.env
 .env
 .env.*

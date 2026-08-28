@@ -1,8 +1,8 @@
-"""Gemeinsame Basis aller Hooks.
+"""Shared base for all hooks.
 
-Ein Hook läuft bei jedem Werkzeugaufruf. Er muss deshalb schnell starten, darf
-nie unkontrolliert werfen und darf den Ablauf niemals wegen eines eigenen
-Fehlers blockieren — außer, er blockiert absichtlich.
+A hook runs on every tool call. It must therefore start fast, must never
+throw uncontrolled, and must never block the flow because of its own
+error — unless it is blocking intentionally.
 """
 
 from __future__ import annotations
@@ -12,14 +12,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Die Kernbibliothek liegt außerhalb des Hook-Verzeichnisses.
+# The core library lives outside the hooks directory.
 _BIN = Path(__file__).resolve().parents[2] / "bin"
 if str(_BIN) not in sys.path:
     sys.path.insert(0, str(_BIN))
 
 
 def read_input() -> dict[str, Any]:
-    """Liest die Hook-Eingabe von stdin. Bei Unlesbarkeit: leeres Dict."""
+    """Reads the hook input from stdin. If unreadable: empty dict."""
     try:
         raw = sys.stdin.read()
         return json.loads(raw) if raw.strip() else {}
@@ -28,7 +28,7 @@ def read_input() -> dict[str, Any]:
 
 
 def emit(payload: dict[str, Any]) -> None:
-    """Schreibt eine JSON-Antwort und beendet mit 0."""
+    """Writes a JSON response and exits with 0."""
     sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     sys.stdout.flush()
     sys.exit(0)
@@ -39,14 +39,14 @@ def emit_nothing() -> None:
 
 
 def block(reason: str) -> None:
-    """Exit 2 blockiert die Aktion; stderr ist die Begründung."""
+    """Exit 2 blocks the action; stderr carries the reason."""
     sys.stderr.write(reason)
     sys.stderr.flush()
     sys.exit(2)
 
 
 def pre_tool_decision(verdict: str, reason: str) -> None:
-    """Antwortformat für PreToolUse."""
+    """Response format for PreToolUse."""
     emit({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -57,7 +57,7 @@ def pre_tool_decision(verdict: str, reason: str) -> None:
 
 
 def permission_decision(decision: str, reason: str) -> None:
-    """Antwortformat für PermissionRequest."""
+    """Response format for PermissionRequest."""
     emit({
         "hookSpecificOutput": {
             "hookEventName": "PermissionRequest",
@@ -68,7 +68,7 @@ def permission_decision(decision: str, reason: str) -> None:
 
 
 def additional_context(event: str, text: str) -> None:
-    """Stellt Claude zusätzlichen Kontext bereit."""
+    """Provides Claude with additional context."""
     emit({
         "hookSpecificOutput": {
             "hookEventName": event,
@@ -78,7 +78,7 @@ def additional_context(event: str, text: str) -> None:
 
 
 def safe(main) -> None:
-    """Führt einen Hook aus. Interne Fehler beenden mit 1 = nicht blockierend."""
+    """Runs a hook. Internal errors exit with 1 = non-blocking."""
     try:
         main()
     except SystemExit:

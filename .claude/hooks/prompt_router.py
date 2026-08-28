@@ -1,27 +1,27 @@
-"""UserPromptSubmit — klassifiziert jeden Auftrag, bevor er bearbeitet wird.
+"""UserPromptSubmit — classifies every task before it is handled.
 
-Der Hook kann das Modell der laufenden Sitzung **nicht** wechseln — wenn er
-feuert, hat dieses Modell den Prompt bereits gelesen. Sein Zweck ist ein
-anderer: er sorgt dafür, dass die Einordnung **deterministisch** passiert und
-nicht dem Bauchgefühl des Modells überlassen bleibt, das gerade antwortet.
+The hook **cannot** switch the running session's model — by the time it
+fires, that model has already read the prompt. Its purpose is different: it
+ensures the classification happens **deterministically** instead of being
+left to the gut feeling of the model that is currently responding.
 
-Wirken kann die Empfehlung an zwei Stellen:
+The recommendation can take effect in two places:
 
-1. Der Lead Agent delegiert die Aufgabe an einen Subagenten und setzt dabei
-   das Modell pro Aufruf — dort greift die Routung tatsächlich.
-2. Bei einem deutlichen Missverhältnis bekommt der Benutzer den Hinweis, dass
-   ein Sitzungswechsel sich lohnt.
+1. The lead agent delegates the task to a subagent and sets the model per
+   call — that is where the routing actually applies.
+2. On a clear mismatch, the user gets a hint that a session switch is
+   worthwhile.
 
-Bewusst zurückhaltend: Der Hook meldet sich nur, wenn er etwas beizutragen
-hat. Ein Hinweis bei jedem Prompt wäre Lärm und würde nach kurzer Zeit
-überlesen.
+Deliberately restrained: the hook only speaks up when it has something to
+contribute. A note on every prompt would be noise and would soon be
+ignored.
 """
 
 from __future__ import annotations
 
 import hooklib
 
-# Unterhalb dieser Länge lohnt keine Einordnung — "ja", "weiter", "danke".
+# Below this length, classification isn't worthwhile — "yes", "go on", "thanks".
 MIN_LENGTH = 25
 
 
@@ -36,46 +36,46 @@ def main() -> None:
 
     result = routing.classify(prompt)
 
-    # Der Normalfall bleibt stumm: Routineaufgabe, kein Risiko, kein
-    # Subagent — dazu gibt es nichts zu sagen.
+    # The normal case stays silent: routine task, no risk, no
+    # subagent — there is nothing to say about that.
     if (not result.needs_stronger_model and result.risk in ("R0", "R1")
             and result.agent is None):
         _record(data, result)
         hooklib.emit_nothing()
 
-    lines = [f"Einordnung (regelbasiert, ohne Modellaufruf): "
-             f"**{result.domain} · {result.risk} · empfohlen {result.model} "
-             f"mit Effort {result.effort}**"]
+    lines = [f"Classification (rule-based, no model call): "
+             f"**{result.domain} · {result.risk} · recommended {result.model} "
+             f"with effort {result.effort}**"]
 
     if result.reasons:
-        lines.append("Grund: " + "; ".join(result.reasons))
+        lines.append("Reason: " + "; ".join(result.reasons))
 
     if result.agent:
         lines.append(
-            f"Zuständig wäre `{result.agent}`. Bei Delegation das Modell pro "
-            f"Aufruf auf `{result.model}` setzen — dort greift die Routung "
-            "tatsächlich."
+            f"`{result.agent}` would be responsible. On delegation, set the model per "
+            f"call to `{result.model}` — that is where the routing "
+            "actually applies."
         )
 
     if result.risk in ("R2", "R3"):
         lines.append(
-            f"{result.risk}: vor der ersten Änderung `preflight-change` — "
-            "Task Contract, Lock, Baseline, Backup, Rollback-Plan."
-            + (" R3 braucht zusätzlich die ausdrückliche Freigabe des Benutzers."
+            f"{result.risk}: before the first change, `preflight-change` — "
+            "task contract, lock, baseline, backup, rollback plan."
+            + (" R3 additionally needs the user's explicit approval."
                if result.risk == "R3" else "")
         )
 
     if result.needs_stronger_model:
         lines.append(
-            "Wenn diese Sitzung auf dem schwächeren Modell läuft: entweder die "
-            "denkintensiven Teile an einen Subagenten mit `model: opus` "
-            "delegieren, oder dem Benutzer einen Sitzungswechsel vorschlagen. "
-            "Die Einordnung allein ist kein Grund, ungefragt zu wechseln."
+            "If this session is running on the weaker model: either delegate "
+            "the reasoning-intensive parts to a subagent with `model: opus`, "
+            "or suggest a session switch to the user. "
+            "The classification alone is not a reason to switch unprompted."
         )
 
     lines.append(
-        "Diese Einordnung ist ein Hinweis, keine Anweisung. Widerspricht sie "
-        "dem, was du am System siehst, gilt die Beobachtung."
+        "This classification is a hint, not an instruction. If it contradicts "
+        "what you observe on the system, the observation prevails."
     )
 
     _record(data, result)
@@ -83,7 +83,7 @@ def main() -> None:
 
 
 def _record(data: dict, result) -> None:
-    """Protokolliert nur die Einordnung; Prompt-Inhalte bleiben aus dem Ledger."""
+    """Logs only the classification; prompt content stays out of the ledger."""
     try:
         from agentsys import ledger
         ledger.log_event(
@@ -98,7 +98,7 @@ def _record(data: dict, result) -> None:
                 "reasons": result.reasons,
             },
         )
-    except Exception:  # noqa: BLE001 - Protokollierung darf nie blockieren
+    except Exception:  # noqa: BLE001 - logging must never block
         pass
 
 

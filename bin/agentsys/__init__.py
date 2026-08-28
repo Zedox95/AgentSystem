@@ -1,13 +1,13 @@
-"""agentsys — Kernbibliothek der Control Plane.
+"""agentsys — core library of the control plane.
 
-Module:
+Modules:
 
-* `paths`       — zentrale Pfade und Schutz der Control Plane
-* `policy`      — deterministischer Policy Guard (ALLOW / ASK / DENY)
-* `ledger`      — Run Ledger, Task State Machine, Checkpointing
-* `locks`       — Resource Locks
-* `fingerprint` — Environment Fingerprint und Known-Good-Versionen
-* `experience`  — Experience Store mit CANDIDATE / VERIFIED / DEPRECATED
+* `paths`       — central paths and control-plane protection
+* `policy`      — deterministic policy guard (ALLOW / ASK / DENY)
+* `ledger`      — run ledger, task state machine, checkpointing
+* `locks`       — resource locks
+* `fingerprint` — environment fingerprint and known-good versions
+* `experience`  — experience store with CANDIDATE / VERIFIED / DEPRECATED
 """
 
 from __future__ import annotations

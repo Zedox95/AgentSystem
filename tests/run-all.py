@@ -1,8 +1,7 @@
-"""Gesamter Testlauf des Agentensystems.
+"""Full test run of the agent system.
 
-Ein einziger Einstiegspunkt, damit Regressionsläufe nach jeder Änderung an
-Skills, Agenten, Adaptern, Routing oder Hooks reproduzierbar sind
-(AGENTS.md Abschnitt 21).
+A single entry point so regression runs after any change to skills, agents,
+adapters, routing, or hooks are reproducible (AGENTS.md section 21).
 
     python C:\\AgentSystem\\tests\\run-all.py
 """
@@ -18,7 +17,7 @@ from pathlib import Path
 
 TESTS_DIR = Path(__file__).resolve().parent
 
-# Reihenfolge ist bewusst: Bibliothek vor Hooks, Konfiguration vor Adaptern.
+# Order is deliberate: library before hooks, config before adapters.
 SUITES = (
     "test_core.py",
     "test_completion_gate.py",
@@ -43,10 +42,10 @@ SUITES = (
 
 
 def _last_json_object(text: str) -> dict | None:
-    """Findet das letzte mehrzeilige JSON-Objekt in einer Ausgabe.
+    """Finds the last multi-line JSON object in an output.
 
-    Die Suiten schreiben ihr Ergebnis als eingerücktes JSON; eine zeilenweise
-    Auswertung würde nur die schließende Klammer sehen.
+    The suites write their result as indented JSON; a line-by-line
+    evaluation would only see the closing brace.
     """
     starts = [i for i, line in enumerate(text.splitlines()) if line.startswith("{")]
     lines = text.splitlines()
@@ -61,16 +60,16 @@ def _last_json_object(text: str) -> dict | None:
 def main() -> int:
     results = []
     child_env = dict(os.environ)
-    # Windows-Konsolen verwenden sonst abhängig vom Host cp1252. Alle
-    # Tests und der JSON-Aggregator sprechen verbindlich UTF-8, damit auch
-    # Handoff-Texte und deutsche Fehlermeldungen verlustfrei bleiben.
+    # Windows consoles otherwise use cp1252 depending on the host. All
+    # tests and the JSON aggregator use UTF-8 as a firm rule, so that
+    # handoff texts and German error messages remain lossless.
     child_env["PYTHONIOENCODING"] = "utf-8"
     child_env["PYTHONUTF8"] = "1"
     for suite in SUITES:
         path = TESTS_DIR / suite
         if not path.exists():
             results.append({"suite": suite, "status": "SKIPPED",
-                            "reason": "noch nicht vorhanden"})
+                            "reason": "not present yet"})
             continue
         started = time.monotonic()
         completed = subprocess.run(

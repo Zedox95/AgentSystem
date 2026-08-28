@@ -1,8 +1,8 @@
-"""PermissionRequest — bekannte lesende Aktionen effizient zulassen.
+"""PermissionRequest — efficiently allow known read-only actions.
 
-Nur eindeutig lesende Einzelkommandos werden automatisch erlaubt. Alles andere
-geht ausdrücklich an den Benutzer (`ask`). Es werden **keine** pauschalen
-Schreibrechte erteilt.
+Only clearly read-only single commands are allowed automatically. Everything
+else goes explicitly to the user (`ask`). **No** blanket write permissions
+are ever granted.
 """
 
 from __future__ import annotations
@@ -21,16 +21,16 @@ def main() -> None:
 
     if decision.verdict == policy.DENY:
         hooklib.permission_decision(
-            "deny", f"Policy Guard: {decision.reason} (Regel: {decision.rule})"
+            "deny", f"Policy Guard: {decision.reason} (rule: {decision.rule})"
         )
 
     if decision.rule == "readonly-allowlist":
         hooklib.permission_decision(
-            "allow", "Bekanntes lesendes Kommando ohne Seiteneffekt (R0)"
+            "allow", "Known read-only command with no side effect (R0)"
         )
 
     hooklib.permission_decision(
-        "ask", f"Bestätigung erforderlich ({decision.reason})"
+        "ask", f"Confirmation required ({decision.reason})"
     )
 
 

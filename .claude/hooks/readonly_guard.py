@@ -1,12 +1,12 @@
-"""PreToolUse für den verification-agent — erzwingt Read-only.
+"""PreToolUse for the verification-agent — enforces read-only.
 
-Der Verifier darf niemals reparieren. Werkzeugbeschränkungen im Frontmatter
-decken Write und Edit ab, aber eine Shell kann ebenfalls schreiben. Dieser
-Hook ist die technische Grenze dafür.
+The verifier must never repair anything. Tool restrictions in the frontmatter
+cover Write and Edit, but a shell can also write. This hook is the technical
+boundary for that.
 
-Zugelassen wird nur, was in der Allowlist von `agentsys.policy` steht oder
-eindeutig keine Mutation auslöst. Alles andere wird verweigert — mit einem
-Hinweis, dass das korrekte Ergebnis dann INCONCLUSIVE lautet.
+Only what is on the allowlist of `agentsys.policy`, or what clearly triggers
+no mutation, is allowed. Everything else is denied — with a note that the
+correct result is then INCONCLUSIVE.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ import re
 
 import hooklib
 
-# Zusätzliche eindeutig lesende Muster, die über die allgemeine Allowlist
-# hinausgehen und für Verifikation gebraucht werden.
+# Additional clearly read-only patterns that go beyond the general
+# allowlist and are needed for verification.
 EXTRA_READONLY = re.compile(
     r"^\s*(?:"
     r"curl\s+(?:-[sSILkm]\S*\s+)*(?:-X\s+(?:GET|HEAD)\s+)?https?://"
@@ -36,7 +36,7 @@ EXTRA_READONLY = re.compile(
     re.IGNORECASE,
 )
 
-# Eindeutig mutierende Verben, die nie durchgelassen werden.
+# Clearly mutating verbs that are never let through.
 MUTATING = re.compile(
     r"\b(?:set-|new-|remove-|clear-|stop-|start-|restart-|install-|uninstall-"
     r"|register-|unregister-|enable-|disable-|rename-|move-|copy-|out-file"
@@ -59,28 +59,28 @@ def main() -> None:
 
     from agentsys import policy
 
-    # Der allgemeine Policy Guard hat Vorrang: was dort verboten ist, bleibt es.
+    # The general policy guard takes precedence: what is forbidden there stays forbidden.
     decision = policy.evaluate(data.get("tool_name", ""), data.get("tool_input") or {})
     if decision.verdict == policy.DENY:
         hooklib.pre_tool_decision(
-            "deny", f"Policy Guard: {decision.reason} (Regel: {decision.rule})"
+            "deny", f"Policy Guard: {decision.reason} (rule: {decision.rule})"
         )
 
     if REDIRECT.search(command) or MUTATING.search(command):
-        _deny(command, "enthält ein mutierendes Kommando oder eine Ausgabeumleitung")
+        _deny(command, "contains a mutating command or output redirection")
 
     if policy.is_readonly_command(command) or EXTRA_READONLY.match(command):
-        hooklib.pre_tool_decision("allow", "Lesende Prüfung (verification-agent)")
+        hooklib.pre_tool_decision("allow", "Read-only check (verification-agent)")
 
-    _deny(command, "steht nicht auf der Read-only-Allowlist des Verifiers")
+    _deny(command, "is not on the verifier's read-only allowlist")
 
 
 def _deny(command: str, why: str) -> None:
     hooklib.pre_tool_decision(
         "deny",
-        f"Der verification-agent ist strikt read-only. Das Kommando {why}. "
-        "Wenn eine Prüfung ohne Änderung nicht möglich ist, lautet das korrekte "
-        "Ergebnis INCONCLUSIVE mit Angabe der fehlenden Prüfung — nicht PASS.",
+        f"The verification-agent is strictly read-only. The command {why}. "
+        "If a check is not possible without a change, the correct "
+        "result is INCONCLUSIVE naming the missing check — not PASS.",
     )
 
 

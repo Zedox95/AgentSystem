@@ -1,16 +1,16 @@
 {
   "$comment": [
-    "MCP-Server für EXPLORATIVES Arbeiten. Für bekannte, wiederholbare Abläufe",
-    "sind die CLIs der bessere Weg: adapters/ufo/ufoctl.py und",
-    "adapters/playwright/pwctl.mjs. Sie sind deterministisch skriptbar, einzeln",
-    "verifizierbar und erzeugen kleinere Kontextausgaben.",
+    "MCP servers for EXPLORATORY work. For known, repeatable workflows the",
+    "CLIs are the better path: adapters/ufo/ufoctl.py and",
+    "adapters/playwright/pwctl.mjs. They are deterministically scriptable,",
+    "individually verifiable, and produce smaller context output.",
     "",
-    "Beide Server halten Zustand über viele Schritte hinweg - genau darin liegt",
-    "ihr Nutzen, wenn man sich erst durch eine unbekannte Oberfläche tasten muss.",
+    "Both servers hold state across many steps - that is exactly their value",
+    "when you first have to feel your way through an unfamiliar interface.",
     "",
-    "Das Browserprofil unter state/browser-profiles/mcp enthält Cookies und",
-    "Sitzungsdaten und ist damit ein Secret nach AGENTS.md Abschnitt 20:",
-    "ausserhalb der Versionskontrolle, nie protokolliert."
+    "The browser profile under state/browser-profiles/mcp contains cookies",
+    "and session data and is therefore a secret per AGENTS.md section 20:",
+    "outside version control, never logged."
   ],
 
   "mcpServers": {

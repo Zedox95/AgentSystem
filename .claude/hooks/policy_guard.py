@@ -1,15 +1,15 @@
-"""PreToolUse — deterministischer Policy Guard.
+"""PreToolUse — deterministic policy guard.
 
-Kein Modell entscheidet hier mit. Die Regeln liegen in `agentsys.policy` und
-sind ohne Netzwerkzugriff auswertbar.
+No model has a say here. The rules live in `agentsys.policy` and are
+evaluable without network access.
 
-* `deny`     — destruktiv und schwer umkehrbar, gehört dem Benutzer
-* `escalate` — legitim, aber ab R2: der Benutzer bestätigt
-* `allow`    — keine Regel getroffen oder bekannte lesende Aktion
+* `deny`     — destructive and hard to reverse, belongs to the user
+* `escalate` — legitimate, but from R2 on: the user confirms
+* `allow`    — no rule matched, or a known read-only action
 
-`allow` wird bewusst nur für die Allowlist ausgegeben. In allen anderen Fällen
-antwortet der Hook gar nicht, damit der reguläre Berechtigungsfluss greift und
-der Hook keine Rechte erteilt, die er nicht erteilen soll.
+`allow` is deliberately only emitted for the allowlist. In all other cases
+the hook does not respond at all, so the regular permission flow takes over
+and the hook never grants rights it should not grant.
 """
 
 from __future__ import annotations
@@ -30,28 +30,28 @@ def main() -> None:
         _record(data, decision, "DENY")
         hooklib.pre_tool_decision(
             "deny",
-            f"Policy Guard: {decision.reason} (Regel: {decision.rule}). "
-            "Diese Aktion ist R3 und muss vom Benutzer selbst durchgeführt "
-            "oder ausdrücklich freigegeben werden.",
+            f"Policy Guard: {decision.reason} (rule: {decision.rule}). "
+            "This action is R3 and must be performed by the user themself "
+            "or explicitly approved.",
         )
 
     if decision.verdict == policy.ASK:
         _record(data, decision, "ASK")
         hooklib.pre_tool_decision(
             "escalate",
-            f"Policy Guard: {decision.reason} (Regel: {decision.rule}). "
-            "Bestätigung erforderlich.",
+            f"Policy Guard: {decision.reason} (rule: {decision.rule}). "
+            "Confirmation required.",
         )
 
     if decision.rule == "readonly-allowlist":
-        hooklib.pre_tool_decision("allow", "Bekanntes lesendes Kommando (R0)")
+        hooklib.pre_tool_decision("allow", "Known read-only command (R0)")
 
-    # Keine Regel getroffen: normaler Berechtigungsfluss.
+    # No rule matched: normal permission flow.
     hooklib.emit_nothing()
 
 
 def _record(data: dict, decision, verdict: str) -> None:
-    """Protokolliert nur Deny/Ask - der Normalfall bleibt ohne Schreiblast."""
+    """Logs only Deny/Ask - the normal case stays free of write load."""
     try:
         from agentsys import ledger
         ledger.log_event(
@@ -66,7 +66,7 @@ def _record(data: dict, decision, verdict: str) -> None:
                 "tool_use_id": data.get("tool_use_id"),
             },
         )
-    except Exception:  # noqa: BLE001 - Protokollierung darf nie blockieren
+    except Exception:  # noqa: BLE001 - logging must never block
         pass
 
 

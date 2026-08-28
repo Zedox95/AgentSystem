@@ -1,8 +1,8 @@
-"""PostToolUseFailure — Fehler erfassen und blinde Wiederholung verhindern.
+"""PostToolUseFailure — capture errors and prevent blind retries.
 
-Jeder Werkzeugfehler landet mit einem Fingerabdruck im Run Ledger. Wiederholt
-sich derselbe Fingerabdruck, bekommt Claude einen ausdrücklichen Hinweis, die
-Methode zu wechseln statt es erneut gleich zu versuchen (AGENTS.md Abschnitt 15).
+Every tool error lands in the run ledger with a fingerprint. If the same
+fingerprint recurs, Claude gets an explicit hint to switch methods instead
+of trying the exact same thing again (AGENTS.md section 15).
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import sys
 
 import hooklib
 
-# Wechselnde Bestandteile entfernen, damit derselbe Fehler denselben
-# Fingerabdruck erzeugt: Zeitstempel, PIDs, Pfade mit Zufallsanteil, Adressen.
+# Strip volatile parts so the same error produces the same
+# fingerprint: timestamps, PIDs, paths with random components, addresses.
 _NOISE = re.compile(
     r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}\S*"
     r"|0x[0-9a-f]{4,}"
@@ -52,7 +52,7 @@ def main() -> None:
         },
     )
 
-    # Wie oft ist genau dieser Fehler schon aufgetreten?
+    # How many times has exactly this error already occurred?
     try:
         with ledger.connect() as connection:
             occurrences = connection.execute(
@@ -64,14 +64,14 @@ def main() -> None:
         occurrences = 1
 
     if occurrences >= 2:
-        # Exit 2 zeigt Claude die Meldung an, ohne den Ablauf abzubrechen -
-        # das Werkzeug ist ohnehin bereits fehlgeschlagen.
+        # Exit 2 shows Claude the message without aborting the flow -
+        # the tool has already failed anyway.
         sys.stderr.write(
-            f"Retry Budget: Dieser Fehler ist bereits {occurrences}-mal mit "
-            f"identischem Fingerabdruck ({digest}) aufgetreten. "
-            "AGENTS.md Abschnitt 15: dieselbe Methode nicht erneut unverändert "
-            "versuchen. Ursache diagnostizieren, dann Methode wechseln, "
-            "gegebenenfalls anderen Agenten oder Rollback."
+            f"Retry Budget: this error has already occurred {occurrences} times with "
+            f"an identical fingerprint ({digest}). "
+            "AGENTS.md section 15: do not try the same method again unchanged. "
+            "Diagnose the cause, then switch method, "
+            "if needed a different agent or a rollback."
         )
         sys.exit(2)
 

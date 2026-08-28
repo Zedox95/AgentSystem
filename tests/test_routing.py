@@ -1,15 +1,15 @@
-"""Tests der Modell-Routung.
+"""Tests for model routing.
 
-Die Fälle hier sind nicht ausgedacht, sondern beim Aufbau tatsächlich
-danebengegangen. Jeder einzelne steht für einen Fehler, der ohne diesen Test
-beim nächsten Nachschärfen der Muster stillschweigend zurückkäme:
+The cases here aren't made up — they actually went wrong while this was
+being built. Each one stands for a bug that would silently come back the
+next time the patterns get refined, without this test:
 
-* deutsche Wortbeugung — `vergleich\\b` trifft "Vergleiche" nicht
-* trennbare Verben — "Starte den Spooler **neu**"
-* Komposita — "Drucker**spooler**", "Grafik**treiber**"
-* Handlung vor Objekt — "Treiber **prüfen**" ist keine Änderung
+* German word inflection — `vergleich\\b` doesn't match "Vergleiche"
+* separable verbs — "Starte den Spooler **neu**" (restart)
+* compounds — "Drucker**spooler**" (print spooler), "Grafik**treiber**" (graphics driver)
+* action before object — "Treiber **prüfen**" (check driver) is not a change
 
-Der Hook wird als echter Prozess aufgerufen, nicht nur importiert.
+The hook is invoked as a real process, not just imported.
 
     python C:\\AgentSystem\\tests\\test_routing.py
 """
@@ -23,7 +23,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 HOOK = ROOT / ".claude" / "hooks" / "prompt_router.py"
 
 sys.path.insert(0, str(ROOT / "bin"))
@@ -42,36 +42,36 @@ def check(condition: bool, message: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# Klassifikation: (Auftrag, Modell, Risiko, Domäne oder None)
+# Classification: (prompt, model, risk, domain or None)
 # --------------------------------------------------------------------------
 CASES: tuple[tuple[str, str, str, str | None], ...] = (
-    # Routine — abfragend, nichts wird angefasst
+    # Routine — inquiring, nothing is touched
     ("Zeig mir den Status des Agentensystems", "sonnet", "R0", None),
     ("Lies mir die Datei config.yaml vor", "sonnet", "R0", None),
     ("Wie viele Dateien liegen im Projektverzeichnis?", "sonnet", "R0", None),
 
-    # Handlung vor Objekt: prüfen ist keine Änderung, auch nicht bei Treibern
+    # Action before object: checking is not a change, not even for drivers
     ("Pruefe meinen PC auf Fehler und veraltete Treiber", "sonnet", "R0", "windows"),
     ("Zeig mir alle laufenden Dienste", "sonnet", "R0", "windows"),
 
-    # Echte Änderungen
+    # Real changes
     ("Installiere den neuen NVIDIA-Treiber", "sonnet", "R2", "windows"),
     ("Aktiviere die Firewall-Regel fuer Port 25565", "sonnet", "R2", None),
     ("Aktualisiere den Grafiktreiber", "sonnet", "R2", "windows"),
 
-    # Trennbare Verben: die Partikel steht am Satzende
+    # Separable verbs: the particle sits at the end of the sentence
     ("Starte den Druckerspooler neu", "sonnet", "R2", "windows"),
     ("Fahre die virtuelle Maschine herunter", "sonnet", "R1", "infrastruktur"),
 
-    # Komposita
+    # Compounds
     ("Deaktiviere den Systemdienst Spooler", "sonnet", "R2", "windows"),
 
-    # Schwer umkehrbar
+    # Hard to reverse
     ("Loesche die Partition D und formatiere sie neu", "opus", "R3", None),
     ("Entferne die alten Savegames vom ARK-Server", "opus", "R3", "gaming"),
     ("Setze den Router auf Werkseinstellungen zurueck", "opus", "R3", "browser"),
 
-    # Denkarbeit — Beugung muss greifen
+    # Reasoning work — inflection must be caught
     ("Vergleiche Proxmox und Docker und empfiehl mir eins", "opus", "R0", "infrastruktur"),
     ("Warum startet der Minecraft-Server nicht mehr?", "opus", "R0", "gaming"),
     ("Die Portfreigabe am Router funktioniert nicht, finde die Ursache",
@@ -82,55 +82,55 @@ CASES: tuple[tuple[str, str, str, str | None], ...] = (
 for prompt, expected_model, expected_risk, expected_domain in CASES:
     result = routing.classify(prompt)
     check(result.model == expected_model,
-          f"Modell: {prompt[:44]!r} -> {result.model}, erwartet {expected_model}")
+          f"Model: {prompt[:44]!r} -> {result.model}, expected {expected_model}")
     check(result.risk == expected_risk,
-          f"Risiko: {prompt[:44]!r} -> {result.risk}, erwartet {expected_risk}")
+          f"Risk: {prompt[:44]!r} -> {result.risk}, expected {expected_risk}")
     if expected_domain is not None:
         check(result.domain == expected_domain,
-              f"Domäne: {prompt[:44]!r} -> {result.domain}, erwartet {expected_domain}")
+              f"Domain: {prompt[:44]!r} -> {result.domain}, expected {expected_domain}")
 
-# Ein Subagent gehört zu jeder erkannten Domäne.
+# A subagent belongs to every recognized domain.
 for prompt, _, _, expected_domain in CASES:
     result = routing.classify(prompt)
     if expected_domain:
         check(result.agent is not None,
-              f"Domäne {result.domain} ohne zuständigen Agenten: {prompt[:40]!r}")
+              f"Domain {result.domain} without a responsible agent: {prompt[:40]!r}")
 
-# Unsicherheit wird gemeldet, statt sie zu verschweigen.
+# Uncertainty is reported, not hidden.
 short = routing.classify("mach mal")
-check(any("unsicher" in r for r in short.reasons),
-      "Ein sehr kurzer Auftrag muss als unsicher gekennzeichnet werden")
+check(any("uncertain" in r for r in short.reasons),
+      "A very short prompt must be flagged as uncertain")
 
-# Der Klassifizierer darf nie abstürzen.
+# The classifier must never crash.
 for edge in ("", "   ", "?" * 300, "ä" * 50, "Lösche\nalles\tsofort"):
     try:
         routing.classify(edge)
     except Exception as error:  # noqa: BLE001
-        FAILURES.append(f"classify({edge[:20]!r}) wirft {error!r}")
+        FAILURES.append(f"classify({edge[:20]!r}) raises {error!r}")
 
 # --------------------------------------------------------------------------
-# Eskalation
+# Escalation
 # --------------------------------------------------------------------------
 model, effort, _ = routing.escalate("sonnet", verifier_verdict="INCONCLUSIVE")
 check((model, effort) == ("sonnet", "high"),
-      f"INCONCLUSIVE darf das Modell nicht wechseln, war {model}/{effort}")
+      f"INCONCLUSIVE must not change the model, was {model}/{effort}")
 
 model, effort, _ = routing.escalate("sonnet", verifier_verdict="FAIL")
 check((model, effort) == ("opus", "high"),
-      f"FAIL muss auf opus eskalieren, war {model}/{effort}")
+      f"FAIL must escalate to opus, was {model}/{effort}")
 
 model, effort, _ = routing.escalate("opus", verifier_verdict="FAIL")
 check((model, effort) == ("opus", "xhigh"),
-      f"Bereits opus: Effort erhöhen statt Modell wechseln, war {model}/{effort}")
+      f"Already opus: raise effort instead of switching model, was {model}/{effort}")
 
 model, effort, _ = routing.escalate("sonnet", failed_attempts=2)
-check(model == "opus", "Zwei gescheiterte Ansätze müssen eskalieren")
+check(model == "opus", "Two failed attempts must escalate")
 
 model, effort, _ = routing.escalate("sonnet", verifier_verdict="PASS")
-check(model == "sonnet", "PASS darf nicht eskalieren")
+check(model == "sonnet", "PASS must not escalate")
 
 # --------------------------------------------------------------------------
-# Der Hook als echter Prozess
+# The hook as a real process
 # --------------------------------------------------------------------------
 
 
@@ -149,25 +149,25 @@ def run_hook(prompt: str) -> tuple[int, dict | None]:
 
 
 code, payload = run_hook("Loesche die Partition D und formatiere sie neu")
-check(code == 0, f"Der Hook darf nie blockieren, war {code}")
+check(code == 0, f"The hook must never block, was {code}")
 context = (payload or {}).get("hookSpecificOutput", {}).get("additionalContext", "")
-check("R3" in context, "Bei R3 muss der Hook die Risikoklasse nennen")
-check("preflight-change" in context, "Bei R3 muss der Hook auf preflight-change verweisen")
-check("Freigabe" in context, "Bei R3 muss der Hook die Benutzerfreigabe erwähnen")
-check("Hinweis, keine Anweisung" in context,
-      "Der Hook muss kennzeichnen, dass seine Einordnung nicht bindend ist")
+check("R3" in context, "For R3 the hook must name the risk class")
+check("preflight-change" in context, "For R3 the hook must reference preflight-change")
+check("approval" in context, "For R3 the hook must mention user approval")
+check("a hint, not an instruction" in context,
+      "The hook must indicate that its classification is not binding")
 
 code, payload = run_hook("ok")
-check(code == 0, "Ein sehr kurzer Prompt darf nicht blockieren")
-check(not payload, "Bei einem sehr kurzen Prompt soll der Hook schweigen")
+check(code == 0, "A very short prompt must not block")
+check(not payload, "For a very short prompt the hook should stay silent")
 
 code, payload = run_hook("Zeig mir bitte einmal den aktuellen Status an")
-check(code == 0, "Ein Routineprompt darf nicht blockieren")
-check(not payload, "Bei einer reinen Routineaufgabe soll der Hook schweigen")
+check(code == 0, "A routine prompt must not block")
+check(not payload, "For a purely routine task the hook should stay silent")
 
 code, payload = run_hook("Warum funktioniert die Netzwerkverbindung nicht mehr?")
 context = (payload or {}).get("hookSpecificOutput", {}).get("additionalContext", "")
-check("opus" in context, "Bei einer offenen Frage muss opus empfohlen werden")
+check("opus" in context, "For an open-ended question, opus must be recommended")
 
 # --------------------------------------------------------------------------
 print(json.dumps({

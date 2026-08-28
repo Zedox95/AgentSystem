@@ -1,13 +1,12 @@
-"""TaskCreated — sicherheitsrelevante Angaben einfordern.
+"""TaskCreated — require safety-relevant information.
 
-Fehlt einem neu angelegten Task erkennbar das Ziel, blockiert Exit 2 die
-Anlage. Risikoklasse, Acceptance Criteria und Rollback lassen sich aus der
-Beschreibung allein nicht zuverlässig ableiten; deshalb wird hier nur
-protokolliert und - bei Hinweisen auf eine riskante Aktion - ausdrücklich an
-den Task Contract erinnert.
+If a newly created task is recognizably missing a goal, exit 2 blocks its
+creation. Risk class, acceptance criteria, and rollback cannot be reliably
+derived from the description alone; so this hook only logs and - on hints
+of a risky action - explicitly reminds about the task contract.
 
-Bewusste Zurückhaltung: dieser Hook soll die Arbeit strukturieren, nicht
-alltägliche Aufgaben blockieren.
+Deliberate restraint: this hook is meant to structure the work, not to
+block everyday tasks.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ import sys
 
 import hooklib
 
-# Hinweise darauf, dass die Aufgabe mindestens R2 ist.
+# Hints that the task is at least R2.
 RISKY = re.compile(
     r"\b(treiber|driver|registry|dienst|service|firewall|partition|formatier"
     r"|boot|bios|firmware|migration|löschen|loeschen|delete|entfernen|remove"
@@ -36,8 +35,8 @@ def main() -> None:
 
     if not description:
         sys.stderr.write(
-            "Task ohne Beschreibung wird nicht angelegt. Ein Task braucht ein "
-            "beobachtbares Ziel (AGENTS.md Abschnitt 7)."
+            "A task without a description is not created. A task needs an "
+            "observable goal (AGENTS.md section 7)."
         )
         sys.exit(2)
 
@@ -50,16 +49,16 @@ def main() -> None:
     )
 
     if risky:
-        # Exit 2 würde die Anlage zurückrollen. Das ist hier nicht gewollt -
-        # stattdessen ein sichtbarer Hinweis über hookSpecificOutput.
+        # Exit 2 would roll back the creation. That is not desired here -
+        # instead a visible hint via hookSpecificOutput.
         hooklib.additional_context(
             "TaskCreated",
-            "Diese Aufgabe berührt Bereiche ab Risikoklasse R2. Vor der ersten "
-            "Änderung gehören dazu: Task Contract im Ledger (Ziel, Zielressource, "
-            "Desired State, Risikoklasse, Methode, Alternative, Acceptance "
-            "Criteria, Rollback-Plan), Resource Lock, Baseline und Backup. "
-            "Danach Objective Tests und der verification-agent, bevor Erfolg "
-            "gemeldet wird.",
+            "This task touches areas from risk class R2 upward. Before the first "
+            "change, that includes: a task contract in the ledger (goal, target "
+            "resource, desired state, risk class, method, alternative, acceptance "
+            "criteria, rollback plan), a resource lock, a baseline, and a backup. "
+            "Afterward, objective tests and the verification-agent, before success "
+            "is reported.",
         )
 
     hooklib.emit_nothing()

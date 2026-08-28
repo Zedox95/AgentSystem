@@ -1,4 +1,4 @@
-"""Isolierte Tests fuer reproduzierbare, budgetierte Kontextpakete."""
+"""Isolated tests for reproducible, budgeted context packages."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-context-"))
 VAULT = TMP / "vault"
 VAULT.mkdir(parents=True)
@@ -57,20 +57,20 @@ write_note("server.md", "server-main", "Server Endpoint 192.0.2.2", status="need
 first = context.build(VAULT, "Endpoint", entity="router-main", token_budget=256)
 second = context.build(VAULT, "Endpoint", entity="router-main", token_budget=256)
 check(first.package_id == second.package_id,
-      "Gleicher Vault und Query muessen dieselbe package_id liefern")
+      "Same vault and query must yield the same package_id")
 check(first.estimated_tokens <= first.token_budget,
-      "Context Builder muss das Tokenbudget einhalten")
-check(first.truncated, "Langer Inhalt muss als gekuerzt markiert werden")
+      "Context builder must respect the token budget")
+check(first.truncated, "Long content must be marked as truncated")
 check(len(first.items) == 1 and first.items[0].source_path == "router.md",
-      f"Entity-Filter oder Ranking falsch: {[i.source_path for i in first.items]}")
+      f"Entity filter or ranking wrong: {[i.source_path for i in first.items]}")
 check(len(first.items[0].source_sha256) == 64,
-      "Quellenmanifest braucht einen SHA-256")
+      "Source manifest needs a SHA-256")
 check("private.md" not in {item.source_path for item in first.items},
-      "Unverwaltete private Notiz darf nicht in den Kontext")
+      "Unmanaged private note must not enter the context")
 
 review = context.build(VAULT, "Server", token_budget=1000)
 check(review.conflicts == ["server-main: Notizstatus needs_review"],
-      f"needs_review-Konflikt fehlt: {review.conflicts}")
+      f"needs_review conflict missing: {review.conflicts}")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

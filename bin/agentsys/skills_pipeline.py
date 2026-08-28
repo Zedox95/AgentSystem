@@ -1,7 +1,7 @@
-"""Sichere Vorschlags-Pipeline fuer lernende Skills.
+"""Safe proposal pipeline for learning skills.
 
-Die Pipeline schreibt ausschliesslich Entwuerfe nach ``state/skill-candidates``.
-Es gibt hier absichtlich keine Promote-, Install- oder Control-Plane-Funktion.
+The pipeline exclusively writes drafts to ``state/skill-candidates``. There
+is deliberately no promote, install, or control-plane function here.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def _experience_index() -> dict[str, list[experience.Experience]]:
 def create_candidate(*, name: str, rationale: str,
                      source_experience_keys: list[str], draft_skill_md: str,
                      target_scope: str = "skill") -> dict[str, Any]:
-    """Legt einen deduplizierten Entwurf an, ohne ihn produktiv zu aktivieren."""
+    """Creates a deduplicated draft without activating it in production."""
     keys = sorted(set(source_experience_keys))
     if not keys:
         raise ContractError("Mindestens eine Quellerfahrung ist erforderlich")
@@ -129,7 +129,7 @@ def list_candidates() -> list[dict[str, Any]]:
 
 
 def capability_report() -> dict[str, Any]:
-    """Nur-Lese-Inventar: wiederholte Erfahrungen, Skills und Entwuerfe."""
+    """Read-only inventory: repeated experiences, skills, and drafts."""
     entries: list[experience.Experience] = []
     if paths.EXPERIENCES_DIR.is_dir():
         known = set(experience.Experience.__dataclass_fields__)

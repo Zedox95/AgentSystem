@@ -1,4 +1,4 @@
-"""Read-only Gesundheitspruefung der AgentSystem-Control-Plane."""
+"""Read-only health check of the AgentSystem control plane."""
 
 from __future__ import annotations
 
@@ -154,7 +154,7 @@ def _index_health(vault_root: Path) -> dict[str, Any]:
 
 
 def check(vault_root: str | Path = knowledge.DEFAULT_VAULT) -> dict[str, Any]:
-    """Fuehrt alle Pruefungen ohne Reparatur oder Zustandsaenderung aus."""
+    """Runs all checks without repair or state changes."""
     vault = Path(vault_root).resolve()
     ledger_check, tasks = _ledger_health()
     checks = [

@@ -1,16 +1,16 @@
-"""notify — lokale Windows-Benachrichtigung ohne externe Abhängigkeit.
+"""notify — local Windows notification with no external dependency.
 
-Genutzt für den Codex-Failover: der Benutzer soll mitbekommen, wenn Codex als
-Ersatz-Main übernimmt, auch wenn dabei keine Claude-Code-Session läuft, die
-es ihm sagen könnte. Rein lokal am Rechner - kein Cloud- oder Handy-Push,
-den gibt es in diesem System nicht (siehe Architekturplan zum Codex-Takeover).
+Used for the Codex failover: the user should notice when Codex takes over
+as the substitute main, even when no Claude Code session is running that
+could tell them. Purely local on the machine - there is no cloud or phone
+push in this system (see the Codex takeover architecture plan).
 
-Nutzt `System.Windows.Forms.NotifyIcon` über PowerShell statt eines
-zusätzlichen Moduls wie BurntToast, dessen Installation auf diesem Rechner
-nicht geprüft ist - .NET ist auf jedem Windows-11-System vorhanden.
+Uses `System.Windows.Forms.NotifyIcon` via PowerShell instead of an
+additional module like BurntToast, whose installation on this machine is
+unverified - .NET is present on every Windows 11 system.
 
-Best-effort: ein Fehlschlag der Benachrichtigung darf den eigentlichen
-Vorgang (Checkpoint, Takeover, Rollback) nie verhindern oder verzögern.
+Best-effort: a failed notification must never block or delay the actual
+operation (checkpoint, takeover, rollback).
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ $icon.Dispose()
 
 
 def toast(title: str, message: str, *, timeout: int = 30) -> bool:
-    """Zeigt eine Windows-Benachrichtigung. Gibt True zurück, wenn der Aufruf
-    ohne Fehler durchlief - das ist kein Beweis, dass sie sichtbar war."""
+    """Shows a Windows notification. Returns True if the call went through
+    without error - that is no proof it was actually visible."""
     script = _SCRIPT.format(title=title, message=message)
     try:
         subprocess.run(

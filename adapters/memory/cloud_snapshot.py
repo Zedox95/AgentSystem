@@ -76,17 +76,17 @@ def write_snapshot(output: Path, vault_root: Path = knowledge.DEFAULT_VAULT) -> 
 
 
 def render_markdown(snapshot: dict[str, Any]) -> str:
-    lines = ["# Verwaltete Shared Memory", "",
-             f"Stand (UTC): {snapshot['generated_utc']}", "",
-             "Enthalten sind ausschließlich verwaltete Metadaten und Fakten. Private freie Notiztexte sind ausgeschlossen.", ""]
+    lines = ["# Managed Shared Memory", "",
+             f"As of (UTC): {snapshot['generated_utc']}", "",
+             "Contains only managed metadata and facts. Private free-text notes are excluded.", ""]
     for note in snapshot["notes"]:
         metadata = note.get("metadata", {})
         lines.extend([
             f"## {metadata.get('entity', note['source_path'])}", "",
-            f"- Quelle: `{note['source_path']}`",
+            f"- Source: `{note['source_path']}`",
             f"- Status: `{metadata.get('status', 'needs_review')}`",
-            f"- Vertrauen: `{metadata.get('confidence', 'unknown')}`",
-            f"- Zuletzt geprüft: `{metadata.get('last_verified', 'unknown')}`",
+            f"- Confidence: `{metadata.get('confidence', 'unknown')}`",
+            f"- Last verified: `{metadata.get('last_verified', 'unknown')}`",
             "", "```json",
             json.dumps(note.get("managed_facts", {}), ensure_ascii=False, indent=2, default=str),
             "```", "",

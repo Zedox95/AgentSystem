@@ -1,27 +1,28 @@
-"""Resource Locks.
+"""Resource locks.
 
-Verhindert, dass zwei schreibende Vorgänge gleichzeitig dieselbe Ressource
-ändern. Ein Lock ist eine Datei in `state/locks/`, deren Name aus der
-Ressourcen-ID abgeleitet wird.
+Prevents two writing operations from changing the same resource at the
+same time. A lock is a file in `state/locks/`, whose name is derived from
+the resource ID.
 
-Die Erstellung nutzt `O_EXCL`, ist also atomar: zwei gleichzeitige Versuche
-können nicht beide gewinnen.
+Creation uses `O_EXCL`, so it is atomic: two concurrent attempts can never
+both win.
 
-## Zwei Besitzarten
+## Two ownership kinds
 
-Ein Lock gehört entweder einem **Prozess** oder einem **Task**. Der Unterschied
-entscheidet, wann es als verwaist gilt:
+A lock belongs either to a **process** or to a **task**. The difference
+decides when it counts as orphaned:
 
-* `process` — der haltende Prozess lebt. Passt für einen laufenden Vorgang,
-  der das Lock über einen Kontextmanager hält.
-* `task` — der Vorgang ist über mehrere kurzlebige Aufrufe verteilt. Genau so
-  arbeitet die Kommandozeile: `agentctl lock acquire` endet sofort, der Task
-  läuft aber weiter. Würde hier die Prozesslebendigkeit zählen, wäre jedes
-  Lock unmittelbar nach dem Setzen verwaist und damit wirkungslos.
+* `process` — the holding process is alive. Fits a running operation that
+  holds the lock via a context manager.
+* `task` — the operation is spread across several short-lived calls. That's
+  exactly how the command line works: `agentctl lock acquire` returns
+  immediately, but the task keeps running. If process liveness counted here,
+  every lock would become orphaned immediately after being set and thus
+  useless.
 
-Ein Task-Lock wird deshalb **nur** freigegeben durch ausdrückliches `release`
-oder wenn der zugehörige Task nachweislich abgeschlossen ist
-(`COMMITTED`, `FAILED`, `ROLLED_BACK`). Zeitablauf allein genügt nie.
+A task lock is therefore **only** released by an explicit `release` or when
+the associated task is verifiably finished
+(`COMMITTED`, `FAILED`, `ROLLED_BACK`). Time elapsed alone is never enough.
 """
 
 from __future__ import annotations
@@ -39,7 +40,7 @@ _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 class LockUnavailable(RuntimeError):
-    """Die Ressource ist bereits von einem anderen Vorgang gesperrt."""
+    """The resource is already locked by another operation."""
 
     def __init__(self, resource: str, holder: dict[str, Any]):
         self.resource = resource
@@ -64,27 +65,26 @@ def _lock_path(resource: str):
 
 
 def _process_alive(pid: int) -> bool:
-    """Prüft plattformunabhängig, ob eine PID noch existiert."""
+    """Checks platform-independently whether a PID still exists."""
     if pid <= 0:
         return False
     if os.name == "nt":
         import subprocess
         try:
-            # errors="replace": tasklist gibt unter deutschem Locale Bytes aus,
-            # die sich nicht als cp1252 dekodieren lassen. Ein Decodierfehler
-            # darf hier niemals zum Abbruch führen.
+            # errors="replace": under a German locale, tasklist emits bytes
+            # that don't decode as cp1252. A decode error must never cause
+            # an abort here.
             completed = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
                 capture_output=True, text=True, errors="replace",
                 timeout=10, check=False,
             )
         except (OSError, subprocess.SubprocessError):
-            return True  # Im Zweifel als lebend behandeln, nie fälschlich freigeben.
-        # `tasklist` kann in eingeschränkten Windows-Sandboxes mit
-        # "Zugriff verweigert" und leerer Standardausgabe enden. Das ist kein
-        # Nachweis, dass der Prozess tot ist. Fail-safe bleibt das Lock dann
-        # gehalten; nur eine erfolgreiche Abfrage darf "nicht gefunden"
-        # ergeben.
+            return True  # When in doubt, treat as alive - never release falsely.
+        # In restricted Windows sandboxes, `tasklist` can end with "access
+        # denied" and empty stdout. That is not proof the process is dead.
+        # Fail-safe, the lock then stays held; only a successful query is
+        # allowed to yield "not found".
         if completed.returncode != 0:
             return True
         return str(pid) in completed.stdout
@@ -98,7 +98,7 @@ def _process_alive(pid: int) -> bool:
 
 
 def read_lock(resource: str) -> dict[str, Any] | None:
-    """Gibt die Metadaten eines gehaltenen Locks zurück, sonst None."""
+    """Returns the metadata of a held lock, otherwise None."""
     path = _lock_path(resource)
     if not path.exists():
         return None
@@ -109,7 +109,7 @@ def read_lock(resource: str) -> dict[str, Any] | None:
 
 
 def _task_finished(task_id: str | None) -> bool:
-    """True, wenn der Task nachweislich abgeschlossen ist."""
+    """True if the task is verifiably finished."""
     if not task_id:
         return False
     try:
@@ -118,14 +118,14 @@ def _task_finished(task_id: str | None) -> bool:
     except Exception:  # noqa: BLE001
         return False
     if task is None:
-        # Unbekannter Task: nicht als abgeschlossen behandeln. Im Zweifel
-        # bleibt das Lock bestehen.
+        # Unknown task: don't treat as finished. When in doubt, the lock
+        # stays in place.
         return False
     return task.get("state") in ("COMMITTED", "FAILED", "ROLLED_BACK")
 
 
 def is_stale(lock_data: dict[str, Any]) -> bool:
-    """Entscheidet, ob ein gehaltenes Lock freigegeben werden darf."""
+    """Decides whether a held lock may be released."""
     if lock_data.get("corrupt"):
         return True
     if lock_data.get("owner") == "task":
@@ -135,10 +135,10 @@ def is_stale(lock_data: dict[str, Any]) -> bool:
 
 def acquire(resource: str, *, agent: str, task_id: str | None = None,
             reason: str = "", owner: str = "process") -> Lock:
-    """Belegt eine Ressource oder wirft LockUnavailable.
+    """Claims a resource or raises LockUnavailable.
 
-    `owner="task"` für Vorgänge über mehrere kurzlebige Aufrufe hinweg,
-    `owner="process"` für ein Lock, das ein laufender Prozess hält.
+    `owner="task"` for operations spread across several short-lived calls,
+    `owner="process"` for a lock held by a running process.
     """
     if owner not in ("process", "task"):
         raise ValueError("owner muss 'process' oder 'task' sein")
@@ -171,7 +171,7 @@ def acquire(resource: str, *, agent: str, task_id: str | None = None,
 
 
 def release(lock: Lock) -> bool:
-    """Gibt ein Lock frei. Nur der Inhaber des Tokens darf freigeben."""
+    """Releases a lock. Only the token holder may release it."""
     path = _lock_path(lock.resource)
     current = read_lock(lock.resource)
     if current is None:
@@ -183,7 +183,7 @@ def release(lock: Lock) -> bool:
 
 
 def list_locks() -> list[dict[str, Any]]:
-    """Alle aktuell gehaltenen Locks mit Angabe, ob der Halter noch lebt."""
+    """All currently held locks, noting whether the holder is still alive."""
     paths.ensure_dirs()
     result = []
     for path in sorted(paths.LOCKS_DIR.glob("*.lock")):
@@ -200,7 +200,7 @@ def list_locks() -> list[dict[str, Any]]:
 
 
 class held:
-    """Kontextmanager: `with locks.held("windows:network", agent="windows-agent"):`"""
+    """Context manager: `with locks.held("windows:network", agent="windows-agent"):`"""
 
     def __init__(self, resource: str, *, agent: str, task_id: str | None = None,
                  reason: str = "", owner: str = "process"):

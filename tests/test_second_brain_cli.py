@@ -1,4 +1,4 @@
-"""Smoke Tests fuer die neuen agentctl-Bedienpfade."""
+"""Smoke tests for the new agentctl operating paths."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-cli-"))
 VAULT = TMP / "vault"
 VAULT.mkdir(parents=True)

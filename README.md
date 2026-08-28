@@ -1,105 +1,105 @@
 # AgentSystem
 
-Eine anbieterneutrale Steuerungsebene für KI-Coding-Agenten (Claude Code,
-Codex) auf einem eigenen Windows-Rechner: eine Systempolicy, sechs
-Subagenten, zwölf eigene Skills, neun Hooks und eine kleine Python-Control-
-Plane (Ledger, Locks, Policy Guard, Experience Store).
+A vendor-neutral control plane for AI coding agents (Claude Code,
+Codex) on a personal Windows machine: a system policy, six
+subagents, twelve custom skills, nine hooks, and a small Python control
+plane (Ledger, Locks, Policy Guard, Experience Store).
 
-Der Grundsatz: **Ein Auftrag gilt nie deshalb als erfolgreich, weil ein Agent
-das behauptet.** Realer Systemzustand und objektive Tests schlagen jede
-Agentenaussage — dafür gibt es Risikoklassen, einen Task Contract, Resource
-Locks, ein Transaktionsprinzip mit Backup/Rollback und eine unabhängige,
-ausschließlich lesende Verifikationsrolle.
+The core principle: **A task is never successful just because an agent
+says so.** Real system state and objective tests outrank any
+agent statement — for that there are risk classes, a Task Contract, Resource
+Locks, a transaction principle with backup/rollback, and an independent,
+read-only verification role.
 
-Dies ist der veröffentlichte **Kern** eines größeren, privaten Setups: alles,
-was hier liegt, ist wiederverwendbar, ohne an einen bestimmten Rechner oder
-eine bestimmte Infrastruktur gebunden zu sein. Betreiberspezifischer
-Laufzeitzustand (Ledger-Inhalte, Locks, Backups, konkrete Server-/Netzwerk-
-Konfiguration) ist bewusst nicht Teil dieses Repos.
+This is the published **core** of a larger, private setup: everything
+here is reusable without being tied to a specific machine or
+specific infrastructure. Operator-specific runtime state (Ledger
+contents, locks, backups, concrete server/network configuration) is
+deliberately not part of this repo.
 
-## Einstieg
+## Getting started
 
-| Dokument | Inhalt |
+| Document | Content |
 |---|---|
-| [Benutzeranleitung](docs/benutzeranleitung.md) | Wie du einen Auftrag gibst und was dann passiert |
-| [Systemdokumentation](docs/systemdokumentation.md) | Aufbau und Entstehung |
-| [Second Brain](docs/second-brain-architecture.md) | Lernendes Wissensmanagement mit Quellenbeleg |
-| [Globale Provider-Integration](docs/global-provider-integration.md) | Claude Code, Codex, ChatGPT |
-| [Bekannte Fehler](docs/known-issues.md) | Gemessene Befunde mit Umgehung |
-| [AGENTS.md](AGENTS.md) | Die verbindliche, anbieterneutrale Systempolicy — 24 Abschnitte |
+| [User guide](docs/benutzeranleitung.md) | How to give a task and what happens next |
+| [System documentation](docs/systemdokumentation.md) | Architecture and origins |
+| [Second Brain](docs/second-brain-architecture.md) | Learning knowledge management with source attribution |
+| [Global provider integration](docs/global-provider-integration.md) | Claude Code, Codex, ChatGPT |
+| [Known issues](docs/known-issues.md) | Measured findings with workarounds |
+| [AGENTS.md](AGENTS.md) | The binding, vendor-neutral system policy — 24 sections |
 
-## Aufbau
+## Structure
 
 ```
-AGENTS.md              anbieterneutrale Systempolicy (Prioritäten, Risikoklassen,
-                        Task Contract, Locks, Verifikation, Secrets, Learning)
-CLAUDE.md               Claude-Code-spezifische Ergänzung, bindet AGENTS.md ein
+AGENTS.md              vendor-neutral system policy (priorities, risk classes,
+                        Task Contract, locks, verification, secrets, learning)
+CLAUDE.md               Claude Code-specific addition, imports AGENTS.md
 .claude/
-  agents/                6 Subagenten (Windows, Infrastruktur, Browser, Gaming,
-                          Implementierung, Verifikation)
-  skills/                 12 eigene Skills
-  hooks/                  9 Hook-Skripte (SessionStart, PreToolUse, ConfigChange, ...)
-  settings.json            Berechtigungen und Hook-Verdrahtung
+  agents/                6 subagents (Windows, infrastructure, browser, gaming,
+                          implementation, verification)
+  skills/                 12 custom skills
+  hooks/                  9 hook scripts (SessionStart, PreToolUse, ConfigChange, ...)
+  settings.json            permissions and hook wiring
 bin/
   agentsys/                Ledger, Locks, Policy, Fingerprint, Experience, Knowledge, ...
-  agentctl.py              Kommandozeile der Control Plane
+  agentctl.py              control plane command line
 adapters/
-  ufo/                     Windows-UI-Automation (UFO²) — CLI + MCP
-  playwright/              Browser-Automatisierung — CLI + MCP
-  memory/                  MCP-Zugriff auf verwaltetes, quellenbelegtes Wissen
-schemas/                   JSON-Schemata für Knowledge/Context/Eval/Metric
-evals/                     Eval-Fälle für Regressionsprüfung
-tests/                     Testsuiten, run-all.py
+  ufo/                     Windows UI automation (UFO²) — CLI + MCP
+  playwright/              browser automation — CLI + MCP
+  memory/                  MCP access to managed, source-attributed knowledge
+schemas/                   JSON schemas for Knowledge/Context/Eval/Metric
+evals/                     eval cases for regression testing
+tests/                     test suites, run-all.py
 docs/
 ```
 
-## Zweites Modell als Kontrolle und Übergabe
+## Second model as control and handoff
 
-Codex ist als zweites Frontier-Modell angebunden, nicht als Ersatz bei
-Kontingentende. Aus Claude Code heraus:
+Codex is connected as a second frontier model, not as a replacement when
+quota runs out. From Claude Code:
 
-- `/codex:rescue` — begrenzte Delegation einer Untersuchung oder eines Fixes,
-  Claude bleibt Lead
-- `/codex:review` — unabhängige Codex-Prüfung einer Änderung
-- `/codex:transfer` — vollständige Sitzungsübergabe: Ziel, bisheriger
-  Verlauf und Kontext gehen in einem Befehl an einen Codex-Thread über, der
-  danach mit `codex resume <thread-id>` fortgesetzt wird
+- `/codex:rescue` — limited delegation of an investigation or a fix,
+  Claude remains lead
+- `/codex:review` — independent Codex review of a change
+- `/codex:transfer` — full session handoff: goal, prior
+  history, and context transfer to a Codex thread in one command, which is
+  then resumed with `codex resume <thread-id>`
 
-Kein Schritt davon setzt einen API-Key — alles läuft über die lokal
-angemeldete Codex-CLI. Details in AGENTS.md Abschnitt 4 und in
-[Systemdokumentation](docs/systemdokumentation.md).
+None of these steps sets an API key — everything runs via the locally
+logged-in Codex CLI. Details in AGENTS.md section 4 and in
+[System documentation](docs/systemdokumentation.md).
 
-## Second Brain: lernendes, quellenbelegtes Wissen
+## Second Brain: learning, source-attributed knowledge
 
-Das System merkt sich nicht einfach Chatverlauf. Neue Erkenntnisse laufen
-über einen kontrollierten Single-Writer-Pfad, bevor sie als Fakt gelten:
+The system doesn't simply remember chat history. New insights go
+through a controlled single-writer path before they count as fact:
 
 ```
-Beobachtung -> Knowledge Candidate -> Archivist-Prüfung -> verwaltete Notiz
+Observation -> Knowledge Candidate -> Archivist review -> managed note
                                               |
-                  Nur-Lese-Suche -> Context Builder -> Quellenpaket
+                  Read-only search -> Context Builder -> source package
 ```
 
-- Jeder Fakt startet als `pending`-Kandidat mit Quelle, Datei-Hash und
-  Vertrauensstufe — nie direkt als bestätigt.
-- Nur eine geprüfte Freigabe (`knowledge approve`) schreibt in den
-  Wissensspeicher; sie verlangt einen offenen Task, ein Entity-Lock und bei
-  bestehenden Notizen den aktuell gemessenen Hash.
-- Schwächere Quellen überschreiben stärkere nie — ältere Werte bleiben als
-  `superseded` erhalten statt gelöscht zu werden.
-- Vor jedem Task-Abschluss ist eine Knowledge Review Pflicht: `none`,
-  `captured` oder `deferred`, dokumentiert im Ledger.
+- Every fact starts as a `pending` candidate with source, file hash, and
+  confidence level — never directly as confirmed.
+- Only a reviewed approval (`knowledge approve`) writes to the
+  knowledge store; it requires an open task, an entity lock, and, for
+  existing notes, the currently measured hash.
+- Weaker sources never override stronger ones — older values remain
+  as `superseded` rather than being deleted.
+- A Knowledge Review is mandatory before every task completion: `none`,
+  `captured`, or `deferred`, documented in the Ledger.
 
-Details, CLI-Befehle und Sicherheitsgrenzen in
+Details, CLI commands, and safety boundaries in
 [Second Brain](docs/second-brain-architecture.md).
 
-## Voraussetzungen
+## Prerequisites
 
-- Windows mit [Claude Code](https://claude.com/product/claude-code) und/oder
+- Windows with [Claude Code](https://claude.com/product/claude-code) and/or
   [Codex CLI](https://github.com/openai/codex)
 - Python 3.11+, Node.js 20+
-- Optional: [UFO²](https://github.com/microsoft/UFO) für Windows-GUI-
-  Automatisierung, [Playwright](https://playwright.dev/) für Browser-Aufgaben
+- Optional: [UFO²](https://github.com/microsoft/UFO) for Windows GUI
+  automation, [Playwright](https://playwright.dev/) for browser tasks
 
 ## Installation
 
@@ -109,60 +109,60 @@ cd AgentSystem
 .\setup.ps1
 ```
 
-`setup.ps1` passt die fest verdrahteten Pfade an den tatsächlichen Klon-Ort
-an (egal wo du klonst) und fragt der Reihe nach:
+`setup.ps1` adjusts the hard-coded paths to the actual clone location
+(regardless of where you clone) and asks, in order:
 
-- **Second Brain / Obsidian** — bestehenden Vault-Pfad angeben, oder leer
-  lassen und einen neuen Vault mit der erwarteten Ordnerstruktur anlegen
-  lassen. Nein → der `shared-memory`-MCP-Server wird aus `.mcp.json` entfernt.
-- **UFO² (Windows-GUI-Automatisierung)** — Pfad zu einer bestehenden
-  UFO²-Installation. Nein → der `ufo`-MCP-Server wird entfernt, der Skill
-  `ufo-windows` bleibt ungenutzt.
-- **Playwright (Browser-Automatisierung)** — bei Ja installiert das Skript
-  `npm install` und lädt Chromium herunter. Nein → der `playwright`-Eintrag
-  wird entfernt.
-- **Codex-Anbindung** — bei Ja bekommst du die drei nötigen Schritte im
-  Terminal genannt (`/plugin marketplace add`, `/plugin install`,
-  `/codex:setup`); das Skript selbst installiert keine Claude-Code-Plugins.
+- **Second Brain / Obsidian** — provide an existing vault path, or leave
+  it empty to have a new vault created with the expected folder structure.
+  No → the `shared-memory` MCP server is removed from `.mcp.json`.
+- **UFO² (Windows GUI automation)** — path to an existing
+  UFO² installation. No → the `ufo` MCP server is removed, the skill
+  `ufo-windows` remains unused.
+- **Playwright (browser automation)** — if yes, the script runs
+  `npm install` and downloads Chromium. No → the `playwright`
+  entry is removed.
+- **Codex connection** — if yes, you're given the three necessary steps in
+  the terminal (`/plugin marketplace add`, `/plugin install`,
+  `/codex:setup`); the script itself does not install Claude Code plugins.
 
-Alle vier Fragen mit Nein/Enter beantwortet ergibt ein lauffähiges System
-ganz ohne die optionalen Komponenten. Nicht-interaktiv geht es auch, z. B.
-für Skripte:
+Answering all four questions with No/Enter yields a working system
+without any of the optional components. It also works non-interactively, e.g.
+for scripts:
 
 ```powershell
 .\setup.ps1 -VaultPath 'D:\Notizen\Vault' -InstallPlaywright:$true -SkipUfo -SkipCodexHint
 ```
 
-**Was der Installer nicht abnehmen kann** — Policy oder technische Grenze,
-kein Nachlässigkeitsfehler:
+**What the installer cannot handle for you** — policy or technical boundary,
+not an oversight:
 
-1. **Anmeldungen selbst durchführen:** Claude Code beim Anthropic-Account,
-   Codex-CLI bei ChatGPT (`authMethod: chatgpt`), ggf. `gh auth login` bei
-   GitHub. Alles Browser-/Device-Code-Logins — kein Werkzeug dieses Systems
-   tippt Zugangsdaten.
-2. **Keine LLM-API-Keys setzen.** `.claude/settings.json` blockiert
-   `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`CODEX_API_KEY` absichtlich — nötig
-   sind nur die Abos (Claude Pro/Code, ChatGPT Plus), keine Pay-as-you-go-API.
-3. **Projektvertrauen einmalig bestätigen**, wenn Claude Code oder das
-   Codex-Plugin beim ersten Öffnen nach Hooks/`settings.json` fragt.
-4. Zugangsdaten für Weboberflächen, die der `browser-admin`-Skill anspricht —
-   tippst grundsätzlich du selbst.
+1. **Perform logins yourself:** Claude Code with the Anthropic account,
+   Codex CLI with ChatGPT (`authMethod: chatgpt`), and if applicable `gh auth login` with
+   GitHub. All browser/device-code logins — no tool in this system
+   types credentials.
+2. **Never set LLM API keys.** `.claude/settings.json` deliberately blocks
+   `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`CODEX_API_KEY` — only the
+   subscriptions are needed (Claude Pro/Code, ChatGPT Plus), no pay-as-you-go API.
+3. **Confirm project trust once**, when Claude Code or the
+   Codex plugin asks about hooks/`settings.json` on first open.
+4. Credentials for web interfaces addressed by the `browser-admin` skill —
+   you always type these yourself.
 
-Danach:
+Then:
 
 ```bash
 python bin/agentctl.py status
 python tests/run-all.py
 ```
 
-Öffne Claude Code oder Codex mit diesem Verzeichnis als Projektverzeichnis —
-nur dort greifen Regeln, Agenten, Skills und Hooks. Details in der
-[Benutzeranleitung](docs/benutzeranleitung.md) und in
-[Globale Provider-Integration](docs/global-provider-integration.md).
+Open Claude Code or Codex with this directory as the project directory —
+rules, agents, skills, and hooks only apply there. Details in the
+[User guide](docs/benutzeranleitung.md) and in
+[Global provider integration](docs/global-provider-integration.md).
 
-## Lizenz
+## License
 
-MIT, siehe [LICENSE](LICENSE). Alle Dateien in diesem Repo sind eigenes Werk.
-Das private Gesamtsystem bindet zusätzlich einige extern übernommene Skills
-Dritter (mit eigener Lizenz und Herkunftsnachweis) ein — die sind bewusst
-nicht Teil dieser Veröffentlichung.
+MIT, see [LICENSE](LICENSE). All files in this repo are original work.
+The private overall system additionally incorporates a few externally
+sourced third-party skills (with their own license and provenance) — these are
+deliberately not part of this publication.

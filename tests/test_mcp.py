@@ -1,12 +1,12 @@
-"""MCP-Servertests.
+"""MCP server tests.
 
-Startet jeden in `.mcp.json` deklarierten Server als echten stdio-Prozess und
-führt einen vollständigen MCP-Handshake durch: `initialize`,
-`notifications/initialized`, `tools/list`. Das prüft, was im Betrieb tatsächlich
-passiert — nicht nur, ob die Datei existiert.
+Starts every server declared in `.mcp.json` as a real stdio process and
+performs a full MCP handshake: `initialize`, `notifications/initialized`,
+`tools/list`. This checks what actually happens at runtime — not just
+whether the file exists.
 
-Es werden **keine** Werkzeuge aufgerufen: kein Fenster wird angefasst, kein
-Browser navigiert irgendwohin.
+**No** tools are invoked: no window is touched, no browser navigates
+anywhere.
 
     python C:\\AgentSystem\\tests\\test_mcp.py
 """
@@ -20,7 +20,7 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 MCP_CONFIG = ROOT / ".mcp.json"
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -39,7 +39,7 @@ def _frame(payload: dict) -> bytes:
 
 
 def handshake(name: str, spec: dict, timeout: float = 120.0) -> dict:
-    """Führt einen MCP-Handshake über stdio und gibt die Werkzeugliste zurück."""
+    """Performs an MCP handshake over stdio and returns the tool list."""
     environment = {**os.environ, **(spec.get("env") or {})}
     process = subprocess.Popen(
         [spec["command"], *spec.get("args", [])],
@@ -91,10 +91,10 @@ def handshake(name: str, spec: dict, timeout: float = 120.0) -> dict:
 
 def _read_response(process: subprocess.Popen, *, expect_id: int,
                    timeout: float) -> dict | None:
-    """Liest Zeilen, bis die Antwort mit der erwarteten id kommt.
+    """Reads lines until the response with the expected id arrives.
 
-    Server senden zwischendurch Benachrichtigungen ohne id; die werden
-    übersprungen.
+    Servers occasionally send notifications without an id in between;
+    those are skipped.
     """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -104,7 +104,7 @@ def _read_response(process: subprocess.Popen, *, expect_id: int,
         try:
             message = json.loads(line.decode("utf-8", "replace"))
         except json.JSONDecodeError:
-            continue  # Fremdausgabe auf stdout: ignorieren, aber nicht abbrechen.
+            continue  # Foreign output on stdout: ignore, but don't abort.
         if message.get("id") == expect_id:
             return message
     return None
@@ -126,7 +126,7 @@ def main() -> int:
     config = json.loads(MCP_CONFIG.read_text(encoding="utf-8"))
     servers = config.get("mcpServers", {})
     check(set(servers) >= {"ufo", "playwright", "shared-memory"},
-          f"Erwartet werden ufo, playwright und shared-memory, gefunden: {sorted(servers)}")
+          f"Expected ufo, playwright, and shared-memory, found: {sorted(servers)}")
 
     results = {}
     for name, spec in servers.items():
@@ -135,23 +135,23 @@ def main() -> int:
         if "error" in result:
             FAILURES.append(f"{name}: {result['error']} — {result.get('stderr', '')}")
             continue
-        check(bool(result["tools"]), f"{name} meldet keine Werkzeuge")
+        check(bool(result["tools"]), f"{name} reports no tools")
 
-    # UFO: der Shell-Executor darf auch über MCP nicht erreichbar sein.
+    # UFO: the shell executor must not be reachable via MCP either.
     ufo_tools = results.get("ufo", {}).get("tools", [])
     if ufo_tools:
         shell = [t for t in ufo_tools if "command" in t.lower() or "shell" in t.lower()]
-        check(not shell, f"UFO-MCP darf keinen Shell-Executor führen: {shell}")
+        check(not shell, f"UFO MCP must not carry a shell executor: {shell}")
         for required in ("ui_get_desktop_app_info", "host_select_application_window",
                          "ui_get_app_window_controls_info", "app_click_input"):
-            check(required in ufo_tools, f"UFO-MCP: Werkzeug fehlt: {required}")
+            check(required in ufo_tools, f"UFO MCP: tool missing: {required}")
 
-    # Playwright: die erwarteten Kernwerkzeuge sind da.
+    # Playwright: the expected core tools are there.
     pw_tools = results.get("playwright", {}).get("tools", [])
     if pw_tools:
         expected = [t for t in pw_tools if "navigate" in t or "snapshot" in t]
         check(bool(expected),
-              f"Playwright-MCP: weder navigate noch snapshot gefunden: {pw_tools[:10]}")
+              f"Playwright MCP: neither navigate nor snapshot found: {pw_tools[:10]}")
 
     memory_tools = results.get("shared-memory", {}).get("tools", [])
     if memory_tools:
@@ -159,14 +159,16 @@ def main() -> int:
             "memory_search", "memory_read_managed_note", "memory_submit_candidate",
             "memory_capture_verified", "memory_task_review_status",
         ):
-            check(required in memory_tools, f"Shared-Memory-MCP: Werkzeug fehlt: {required}")
+            check(required in memory_tools, f"Shared-memory MCP: tool missing: {required}")
         forbidden = [name for name in memory_tools if "file" in name or "shell" in name]
-        check(not forbidden, f"Shared-Memory-MCP darf keinen generischen Datei-/Shellzugriff anbieten: {forbidden}")
+        check(not forbidden, f"Shared-memory MCP must not offer generic file/shell access: {forbidden}")
 
-    # Das Browserprofil darf nicht in der Versionskontrolle landen.
+    # The browser profile must not end up in version control. A blanket
+    # "state/" ignore rule covers it too, not just the literal subpath.
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
-    check("state/browser-profiles/" in gitignore,
-          "state/browser-profiles/ muss in .gitignore stehen — es enthält Cookies")
+    gitignore_lines = [line.strip() for line in gitignore.splitlines()]
+    check("state/browser-profiles/" in gitignore_lines or "state/" in gitignore_lines,
+          "state/browser-profiles/ must be covered by .gitignore — it contains cookies")
 
     return _report(results)
 

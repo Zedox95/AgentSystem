@@ -1,77 +1,76 @@
 ---
 name: knowledge-review
-description: Prüft vor COMMITTED automatisch, ob eine abgeschlossene AgentSystem-Aufgabe dauerhaft relevantes Wissen für den verwalteten Obsidian-Vault erzeugt hat, dedupliziert es über die bestehende Entity-Suche und dokumentiert entweder captured, deferred oder none. Für jeden formalen Task Contract nach Objective Tests und Verifier-PASS ausführen; das Commit-Gate blockiert ohne diese Prüfung.
+description: Automatically checks before COMMITTED whether a completed AgentSystem task produced durably relevant knowledge for the managed Obsidian vault, deduplicates it via the existing entity search, and records a decision of either captured, deferred, or none. Run for every formal task contract after objective tests and a verifier PASS; the commit gate blocks without this check.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob, Write
 ---
 
-# Knowledge Review vor dem Commit
+# Knowledge review before commit
 
-Diese Prüfung ist semantisch: Der Hook erzwingt, **dass** sie stattfindet; du
-entscheidest anhand der Evidenz, **was** dauerhaft relevant ist. Schreibe nie
-direkt in den Vault. Verwende ausschließlich Knowledge Candidates und den
-Archivist-Pfad.
+This check is semantic: the hook enforces **that** it happens; you decide
+from the evidence **what** is durably relevant. Never write directly to the
+vault. Use only knowledge candidates and the archivist path.
 
-## Zeitpunkt
+## Timing
 
-Nach abgeschlossenem Run mit Objective Tests und einem unabhängigen `PASS`,
-aber vor `COMMITTED`.
-Der Task muss dabei noch offen sein, damit der Archivist unter demselben Task
-mit Entity-Lock, Backup und Optimistic Concurrency arbeiten kann.
+After a completed run with objective tests and an independent `PASS`, but
+before `COMMITTED`.
+The task must still be open at this point, so the archivist can work under
+the same task with entity lock, backup, and optimistic concurrency.
 
-## Relevanzprüfung
+## Relevance check
 
-Aufnehmen:
+Capture:
 
-- neue oder geänderte Systeme, Geräte und Projekte,
-- abgeschlossene Projektschritte und belegte Laufzeitstände,
-- Entscheidungen mit dauerhaft nützlicher Begründung,
-- offene Punkte, die eine spätere Session fortsetzen muss,
-- bestätigte Nutzerpräferenzen für wiederkehrende Arbeit.
+- new or changed systems, devices, and projects,
+- completed project steps and evidenced runtime states,
+- decisions with durably useful reasoning,
+- open items that a later session must continue,
+- confirmed user preferences for recurring work.
 
-Nicht aufnehmen:
+Do not capture:
 
-- flüchtige Ausgaben, einmalige Kommandos oder reine Gesprächsnacherzählung,
-- unbelegte Vermutungen als Fakt,
-- Secrets, Zugangsdaten, private Notizen oder Daily Notes,
-- Informationen, die bereits mit gleich starker oder stärkerer Quelle vorhanden sind.
+- transient output, one-off commands, or plain conversation recap,
+- unsubstantiated guesses presented as fact,
+- secrets, credentials, private notes, or daily notes,
+- information already present with an equally strong or stronger source.
 
-## Ablauf
+## Procedure
 
-1. Lies Task Contract, Run-Evidenz und Verifier-Urteil.
-2. Suche jede betroffene Entität mit `agentctl knowledge search`.
-3. Wenn nichts dauerhaft relevant ist, dokumentiere das begründet:
+1. Read the task contract, run evidence, and verifier verdict.
+2. Search every affected entity with `agentctl knowledge search`.
+3. If nothing is durably relevant, document that with a reason:
 
 ```powershell
 python C:\AgentSystem\bin\agentctl.py knowledge review `
   --task-id <task-id> --decision none `
-  --reason "Nur flüchtige Ausführung; kein neuer dauerhafter Fakt"
+  --reason "Only transient execution; no new durable fact"
 ```
 
-4. Für relevante Fakten lies
-   `C:\AgentSystem\schemas\knowledge-candidate.schema.json`, erstelle kleine
-   atomare Candidates, reiche sie mit `knowledge submit` ein und lasse sie
-   über `knowledge approve` übernehmen.
-5. Dokumentiere alle erfolgreich übernommenen Candidate-IDs:
+4. For relevant facts, read
+   `C:\AgentSystem\schemas\knowledge-candidate.schema.json`, create small
+   atomic candidates, submit them with `knowledge submit`, and have them
+   adopted via `knowledge approve`.
+5. Document all successfully adopted candidate IDs:
 
 ```powershell
 python C:\AgentSystem\bin\agentctl.py knowledge review `
   --task-id <task-id> --decision captured `
   --review-candidate-id kc-... `
-  --reason "Bestätigter neuer Systemstand wurde in die bestehende Entität übernommen"
+  --reason "Confirmed new system state was merged into the existing entity"
 ```
 
-6. Kann ein relevanter Candidate wegen Konflikt oder fehlender Bestätigung
-   nicht übernommen werden, lasse ihn pending oder lehne ihn nachvollziehbar
-   ab und dokumentiere `deferred` mit der Candidate-ID. Erfinde keinen
-   konfliktfreien Ersatz.
+6. If a relevant candidate cannot be adopted due to a conflict or missing
+   confirmation, leave it pending or reject it with clear reasoning and
+   document `deferred` with the candidate ID. Don't invent a
+   conflict-free substitute.
 
-## Abschlussreihenfolge
+## Completion order
 
-1. Run mit `outcome=PASS`, nicht leerer Objective-Test-Evidenz,
-   Änderungszusammenfassung und `verification="PASS: ..."` beenden.
-2. Danach die Knowledge Review ausführen; eine Review vor dem letzten
-   abgeschlossenen Run gilt als veraltet.
-3. `agentctl task readiness --task-id <task-id>` ausführen.
-4. Nur bei `ready: true` den Task auf `COMMITTED` setzen.
+1. Finish the run with `outcome=PASS`, non-empty objective test evidence,
+   a change summary, and `verification="PASS: ..."`.
+2. Then run the knowledge review; a review performed before the last
+   completed run is considered stale.
+3. Run `agentctl task readiness --task-id <task-id>`.
+4. Only set the task to `COMMITTED` when `ready: true`.
 
-`FAIL` oder `INCONCLUSIVE` ist niemals commit-ready.
+`FAIL` or `INCONCLUSIVE` is never commit-ready.

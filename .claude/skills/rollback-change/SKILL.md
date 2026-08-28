@@ -1,95 +1,92 @@
 ---
 name: rollback-change
-description: Stellt einen bekannten guten Zustand kontrolliert wieder her - Backup-Integrität prüfen, Wiederherstellung planen, ausführen, objektiv verifizieren, Lock freigeben und Ledger auf ROLLED_BACK setzen. Einsetzen, wenn eine Änderung fehlgeschlagen ist, der Verifier FAIL meldet, der Zustand unklar ist oder eine Änderung zurückgenommen werden soll.
+description: Restores a known-good state in a controlled way - verify backup integrity, plan the restore, execute it, objectively verify it, release the lock, and set the ledger to ROLLED_BACK. Use when a change has failed, the verifier reports FAIL, the state is unclear, or a change needs to be reverted.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
 
-# Kontrollierter Rollback
+# Controlled rollback
 
-Ein Rollback ist selbst eine Änderung. Er läuft nach denselben Regeln wie jede
-andere — mit Prüfung vorher und Verifikation nachher.
+A rollback is itself a change. It follows the same rules as any other — with
+checks before and verification after.
 
-## 1. Zustand feststellen, bevor du etwas anfasst
+## 1. Establish the state before touching anything
 
 ```bash
 python C:\AgentSystem\bin\agentctl.py status
 python C:\AgentSystem\bin\agentctl.py task show --task-id <id>
 ```
 
-Kläre: Welche Änderungen wurden tatsächlich schon wirksam? Ein Rollback von
-etwas, das nie passiert ist, richtet mehr Schaden an als er behebt.
+Clarify: which changes actually took effect already? Rolling back something
+that never happened does more damage than it fixes.
 
-Setze den Zustand:
+Set the state:
 
 ```bash
 python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state ROLLING_BACK
 ```
 
-## 2. Backup-Integrität prüfen — vor der Wiederherstellung
+## 2. Verify backup integrity — before restoring
 
-Ein Backup gilt erst als brauchbar, wenn es geprüft ist:
+A backup counts as usable only once it's been checked:
 
-- Alle im Manifest gelisteten Dateien existieren
-- Alle SHA256-Summen stimmen
-- Der Umfang ist plausibel (Dateizahl, Gesamtgröße)
+- All files listed in the manifest exist
+- All SHA256 sums match
+- The scope is plausible (file count, total size)
 
-Stimmt etwas nicht, **nicht wiederherstellen**. Ein kaputtes Backup über einen
-beschädigten Zustand zu legen macht die Lage schlimmer. Dann an den Benutzer
-melden.
+If something doesn't check out, **do not restore**. Laying a broken backup
+over a damaged state makes things worse. Report to the user instead.
 
-## 3. Rollback-Weg wählen
+## 3. Choose a rollback path
 
-| Was | Weg |
+| What | Path |
 |---|---|
-| Control Repo `C:\AgentSystem` | `git revert <commit>` — nicht `reset --hard` |
-| Dateien/Konfiguration | Kopie aus dem Restore-Point zurückspielen, danach Hashes vergleichen |
-| Registry | `reg import` der exportierten `.reg`-Datei |
-| Windows-Treiber | vorherige Version über den Geräte-Manager-Rollback oder `pnputil` mit der gesicherten INF |
-| Dienst | vorherigen Starttyp und Zustand aus der Baseline wiederherstellen |
-| Proxmox | Snapshot-Rollback |
-| Pterodactyl | Backup über die API einspielen |
-| UFO-Patches | Patch zurücknehmen — **nicht** `git checkout` über den gesamten Baum |
-| Paket | vorherige Version gezielt installieren, nicht pauschal deinstallieren |
+| Control repo `C:\AgentSystem` | `git revert <commit>` — not `reset --hard` |
+| Files/configuration | Restore the copy from the restore point, then compare hashes |
+| Registry | `reg import` of the exported `.reg` file |
+| Windows driver | previous version via Device Manager rollback or `pnputil` with the saved INF |
+| Service | restore previous start type and state from the baseline |
+| Proxmox | snapshot rollback |
+| Pterodactyl | restore backup via the API |
+| UFO patches | revert the patch — **not** `git checkout` across the whole tree |
+| Package | install the previous version specifically, not a blanket uninstall |
 
-Der Grundsatz: so gezielt wie möglich. Ein breiter Rücksetzer nimmt fremde
-Änderungen mit, die niemand zurücknehmen wollte.
+The principle: as targeted as possible. A broad revert sweeps up unrelated
+changes nobody wanted reverted.
 
-## 4. Ausführen
+## 4. Execute
 
-Ein Schritt nach dem anderen, mit Prüfung dazwischen. Nicht mehrere
-Rücknahmen gleichzeitig — sonst ist bei einem Problem nicht zuordenbar, welche
-davon es verursacht hat.
+One step at a time, with a check in between. Don't run multiple rollbacks
+simultaneously — otherwise, if a problem occurs, it's impossible to tell
+which one caused it.
 
-## 5. Objektiv verifizieren
+## 5. Verify objectively
 
-Der wiederhergestellte Zustand muss der **Baseline** entsprechen, nicht dem
-gewünschten Zielzustand. Vergleiche gegen die vor der Änderung erfasste rohe
-Ausgabe: Dienststatus, Registry-Wert, Version, Hash, API-Zustand.
+The restored state must match the **baseline**, not the desired target
+state. Compare against the raw output captured before the change: service
+status, registry value, version, hash, API state.
 
-Prüfe zusätzlich, dass keine Reste der fehlgeschlagenen Änderung liegen
-geblieben sind — halbe Installationen, verwaiste Dienste, offene Ports,
-temporäre Regeln.
+Also check that no remnants of the failed change are left behind — half
+installations, orphaned services, open ports, temporary rules.
 
-## 6. Abschließen
+## 6. Close out
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py run finish --run-id <run> --outcome ROLLED_BACK --rollback "<was zurückgenommen wurde>" --tests "<Vergleich gegen Baseline>"
+python C:\AgentSystem\bin\agentctl.py run finish --run-id <run> --outcome ROLLED_BACK --rollback "<what was reverted>" --tests "<comparison against baseline>"
 python C:\AgentSystem\bin\agentctl.py lock release --resource "<lock-id>" --token <token>
 python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state ROLLED_BACK
-python C:\AgentSystem\bin\agentctl.py exp record --key <aufgabenart> --method <methode> --rolled-back --error "<Grund>" --root-cause "<Ursache>"
+python C:\AgentSystem\bin\agentctl.py exp record --key <task-type> --method <method> --rolled-back --error "<reason>" --root-cause "<cause>"
 ```
 
-Das Lock wird erst **nach** der verifizierten Wiederherstellung freigegeben.
+The lock is released only **after** the verified restoration.
 
-## Wenn der Rollback selbst scheitert
+## If the rollback itself fails
 
-Nicht improvisieren. Stoppe, sichere den aktuellen Zustand und melde dem
-Benutzer: was versucht wurde, was fehlschlug, in welchem Zustand das System
-jetzt ist, und welche Optionen bestehen. Ein inkonsistenter Zustand, der
-bekannt ist, ist besser als einer, der durch weitere Versuche verschleiert
-wird.
+Don't improvise. Stop, secure the current state, and report to the user:
+what was attempted, what failed, what state the system is in now, and what
+options exist. A known inconsistent state is better than one obscured by
+further attempts.
 
-## Ergebnis
+## Result
 
-Melde: was zurückgenommen wurde, gegen welche Baseline verifiziert wurde, mit
-welcher rohen Ausgabe, ob Reste gefunden wurden, und den Ledger-Zustand.
+Report: what was reverted, against which baseline it was verified, with
+which raw output, whether remnants were found, and the ledger state.

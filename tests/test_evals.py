@@ -1,4 +1,4 @@
-"""Tests fuer deterministische Evals und KPI-Aggregation."""
+"""Tests for deterministic evals and KPI aggregation."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-evals-"))
 os.environ["AGENTSYSTEM_ROOT"] = str(TMP / "system")
 sys.path.insert(0, str(ROOT / "bin"))
@@ -25,15 +25,15 @@ def check(condition: bool, message: str) -> None:
 
 
 cases = evals.load_cases(ROOT / "evals")
-check(len(cases) >= 3, "Baseline braucht mindestens drei Eval-Faelle")
+check(len(cases) >= 3, "Baseline needs at least three eval cases")
 example = EvalCase(
     eval_id="test-case", task_class="unit-test", prompt="Test", risk_class="R0",
     must_include=["Quelle"], must_not_include=["privat"],
 ).validate()
 check(evals.score(example, "Quelle: hash")["status"] == "PASS",
-      "Vollstaendiger Output muss PASS ergeben")
+      "Complete output must yield PASS")
 check(evals.score(example, "Quelle privat")["status"] == "FAIL",
-      "Verbotener Inhalt muss FAIL ergeben")
+      "Forbidden content must yield FAIL")
 
 metrics = TMP / "events.jsonl"
 for event in (
@@ -43,15 +43,15 @@ for event in (
 ):
     evals.record_metric(event, destination=metrics)
 report = evals.kpi_report(metrics)
-check(report["overall"]["tasks"] == 3, "KPI-Report muss drei Tasks zaehlen")
+check(report["overall"]["tasks"] == 3, "KPI report must count three tasks")
 check(report["overall"]["pass_rate"] == 0.6667,
-      f"PASS-Rate falsch: {report['overall']['pass_rate']}")
+      f"PASS rate wrong: {report['overall']['pass_rate']}")
 check(report["overall"]["median_tool_calls"] == 4,
-      "Median der Toolaufrufe ist falsch")
+      "Median tool calls is wrong")
 check(report["by_task_class"]["context-builder"]["critical_error_rate"] == 0.5,
-      "Taskklassen-Aggregation ist falsch")
+      "Task class aggregation is wrong")
 check(len(metrics.read_text(encoding="utf-8").splitlines()) == 3,
-      "Metriken muessen append-only als einzelne JSONL-Zeilen vorliegen")
+      "Metrics must be append-only as individual JSONL lines")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

@@ -1,16 +1,16 @@
-"""Experience Store.
+"""Experience store.
 
-Speichert objektiv messbare Workflow-Erfahrung: welche Methode für welche
-Aufgabenart in welcher Umgebung wie zuverlässig war.
+Stores objectively measurable workflow experience: which method was how
+reliable for which task type in which environment.
 
-Statusmodell nach AGENTS.md Abschnitt 17:
+Status model per AGENTS.md section 17:
 
-* `CANDIDATE`  — neu beobachtet, noch nicht bestätigt
-* `VERIFIED`   — durch unabhängige Verifikation bestätigt
-* `DEPRECATED` — überholt, wird nicht mehr bevorzugt
+* `CANDIDATE`  — newly observed, not yet confirmed
+* `VERIFIED`   — confirmed through independent verification
+* `DEPRECATED` — superseded, no longer preferred
 
-Eine Erfahrung ohne Environment Fingerprint ist wertlos und wird abgelehnt.
-Secrets werden nicht gespeichert.
+An experience without an environment fingerprint is worthless and is
+rejected. Secrets are not stored.
 """
 
 from __future__ import annotations
@@ -33,10 +33,10 @@ _SAFE = re.compile(r"[^a-z0-9._-]+")
 
 @dataclass
 class Experience:
-    """Eine Methode für eine Aufgabenart, mit gemessener Erfolgsbilanz."""
+    """A method for a task type, with a measured success record."""
 
-    key: str                      # z. B. "windows.driver.inventory"
-    method: str                   # z. B. "powershell:Get-PnpDevice"
+    key: str                      # e.g. "windows.driver.inventory"
+    method: str                   # e.g. "powershell:Get-PnpDevice"
     status: str = CANDIDATE
     agent: str | None = None
     tool: str | None = None
@@ -66,7 +66,7 @@ class Experience:
 
     @property
     def median_duration_ms(self) -> int | None:
-        """Mittlere Dauer über alle Erfolge - grobe, aber ausreichende Kennzahl."""
+        """Mean duration across all successes - a rough but sufficient metric."""
         return (self.total_duration_ms // self.success_count) if self.success_count else None
 
 
@@ -105,7 +105,7 @@ def record(key: str, method: str, *, success: bool, duration_ms: int = 0,
            agent: str | None = None, tool: str | None = None,
            error: str | None = None, root_cause: str | None = None,
            retries: int = 0, rolled_back: bool = False) -> Experience:
-    """Verbucht das Ergebnis einer Ausführung."""
+    """Records the outcome of an execution."""
     entry = load(key, method) or Experience(
         key=key, method=method, agent=agent, tool=tool,
         environment=fingerprint.collect(),
@@ -130,9 +130,9 @@ def record(key: str, method: str, *, success: bool, duration_ms: int = 0,
 
 
 def promote(key: str, method: str, *, revalidate_when: list[str] | None = None) -> Experience:
-    """Hebt eine bestätigte Erfahrung von CANDIDATE auf VERIFIED.
+    """Promotes a confirmed experience from CANDIDATE to VERIFIED.
 
-    Nur zulässig nach einem PASS des Verifiers und mindestens einem Erfolg.
+    Only allowed after a verifier PASS and at least one success.
     """
     entry = load(key, method)
     if entry is None:
@@ -170,11 +170,11 @@ def all_entries() -> list[Experience]:
 
 
 def best_method(key: str, *, require_environment_match: bool = True) -> Experience | None:
-    """Wählt die beste bekannte Methode für eine Aufgabenart.
+    """Selects the best known method for a task type.
 
-    Zuverlässigkeit schlägt Geschwindigkeit: sortiert wird zuerst nach Status,
-    dann nach Erfolgsrate, erst danach nach Dauer. Veraltete Einträge und
-    solche mit unpassender Umgebung werden ausgeschlossen.
+    Reliability beats speed: sorting is first by status, then by success
+    rate, and only then by duration. Deprecated entries and ones with a
+    mismatched environment are excluded.
     """
     current = fingerprint.collect()
     candidates = []
@@ -200,7 +200,7 @@ def best_method(key: str, *, require_environment_match: bool = True) -> Experien
 
 
 def stale_entries() -> list[tuple[Experience, list[str]]]:
-    """Erfahrungen, deren Umgebung sich seit der Messung geändert hat."""
+    """Experiences whose environment has changed since the measurement."""
     current = fingerprint.collect()
     result = []
     for entry in all_entries():

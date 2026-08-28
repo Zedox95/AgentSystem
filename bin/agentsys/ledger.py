@@ -1,11 +1,11 @@
-"""Run Ledger — append-only Protokoll aller relevanten Vorgänge.
+"""Run ledger — append-only log of all relevant activity.
 
-SQLite mit WAL, damit gleichzeitige Hook-Prozesse schreiben können, ohne sich
-zu blockieren. Bestehende Zeilen werden nie verändert; Zustandswechsel eines
-Tasks werden als zusätzliche Ereignisse angehängt.
+SQLite with WAL so that concurrent hook processes can write without
+blocking each other. Existing rows are never changed; a task's state
+changes are appended as additional events.
 
-Es werden ausdrücklich **keine** Secrets protokolliert. Kommandotexte werden
-vor dem Schreiben durch `redact()` geführt.
+**No** secrets are ever logged. Command text is passed through `redact()`
+before being written.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS schema_info (
     version INTEGER NOT NULL
 );
 
--- Ein Task ist ein Benutzerziel mit Vertrag. Zustandswechsel landen in events.
+-- A task is a user goal with a contract. State changes land in events.
 CREATE TABLE IF NOT EXISTS tasks (
     task_id             TEXT PRIMARY KEY,
     created_utc         TEXT NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     fingerprint         TEXT
 );
 
--- Ein Run ist eine konkrete Ausführung innerhalb eines Tasks.
+-- A run is a concrete execution within a task.
 CREATE TABLE IF NOT EXISTS runs (
     run_id            TEXT PRIMARY KEY,
     task_id           TEXT,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS runs (
     FOREIGN KEY (task_id) REFERENCES tasks(task_id)
 );
 
--- Append-only Ereignisstrom. Nichts hier wird je aktualisiert.
+-- Append-only event stream. Nothing here is ever updated.
 CREATE TABLE IF NOT EXISTS events (
     event_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     ts_utc       TEXT NOT NULL,
@@ -89,7 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_runs_task   ON runs(task_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_state ON tasks(state);
 """
 
-# Zustände der Task State Machine aus AGENTS.md Abschnitt 8.
+# States of the task state machine from AGENTS.md section 8.
 STATES = (
     "RECEIVED", "PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP",
     "EXECUTING", "OBJECTIVE_TEST", "INDEPENDENT_VERIFY", "COMMITTED",
@@ -100,9 +100,9 @@ STATES = (
 TERMINAL_STATES = ("COMMITTED", "FAILED", "ROLLED_BACK")
 OPEN_STATES = tuple(s for s in STATES if s not in TERMINAL_STATES)
 
-# Nur diese Übergänge entsprechen der State Machine aus AGENTS.md. Ein
-# erneutes Setzen desselben Zustands ist separat als idempotente Reassertion
-# erlaubt, damit Resume-Pfade nicht an einer bereits erfolgten Aktion scheitern.
+# Only these transitions match the state machine from AGENTS.md. Setting
+# the same state again is separately allowed as an idempotent reassertion,
+# so resume paths don't fail on an action that already happened.
 ALLOWED_TRANSITIONS = {
     "RECEIVED": {"PLANNED", "FAILED"},
     "PLANNED": {"PREFLIGHT", "FAILED"},
@@ -122,7 +122,7 @@ ALLOWED_TRANSITIONS = {
     "COMMITTED": set(),
 }
 
-# Muster, deren Wert vor dem Protokollieren entfernt wird.
+# Patterns whose value is stripped before logging.
 _SECRET_PATTERNS = (
     re.compile(r"(?i)\b((?:api[_-]?key|token|password|passwd|secret|bearer|authorization)"
                r"\s*[:=]\s*)(\S+)"),
@@ -132,7 +132,7 @@ _SECRET_PATTERNS = (
 
 
 def redact(text: str | None) -> str | None:
-    """Entfernt erkennbare Credential-Werte aus einem Text."""
+    """Strips recognizable credential values from a text."""
     if not text:
         return text
     result = text
@@ -151,7 +151,7 @@ def new_id(prefix: str) -> str:
 
 
 def connect() -> sqlite3.Connection:
-    """Öffnet die Ledger-Datenbank und stellt das Schema sicher."""
+    """Opens the ledger database and ensures the schema exists."""
     paths.ensure_dirs()
     connection = sqlite3.connect(paths.LEDGER_DB, timeout=10.0)
     connection.row_factory = sqlite3.Row
@@ -173,7 +173,7 @@ def log_event(
     tool: str | None = None,
     detail: Any = None,
 ) -> None:
-    """Hängt ein Ereignis an. Fehlerhafte Protokollierung darf nie den Ablauf stoppen."""
+    """Appends an event. Faulty logging must never stop the workflow."""
     try:
         payload = detail
         if payload is not None and not isinstance(payload, str):
@@ -185,7 +185,7 @@ def log_event(
                 (utcnow(), task_id, run_id, session_id, event_type,
                  agent, tool, redact(payload)),
             )
-    except Exception:  # noqa: BLE001 - Protokollierung darf nie werfen
+    except Exception:  # noqa: BLE001 - logging must never raise
         pass
 
 
@@ -201,7 +201,7 @@ def create_task(
     rollback_plan: str | None = None,
     fingerprint: str | None = None,
 ) -> str:
-    """Legt einen Task Contract an und gibt die Task-ID zurück."""
+    """Creates a task contract and returns the task ID."""
     task_id = new_id("task")
     with connect() as connection:
         connection.execute(
@@ -217,7 +217,7 @@ def create_task(
 
 
 def latest_knowledge_review(task_id: str) -> dict[str, Any] | None:
-    """Liest die letzte dokumentierte Wissensprüfung eines Tasks."""
+    """Reads a task's last documented knowledge review."""
     with connect() as connection:
         row = connection.execute(
             "SELECT detail FROM events WHERE task_id = ? AND event_type = ? "
@@ -235,25 +235,25 @@ def latest_knowledge_review(task_id: str) -> dict[str, Any] | None:
 
 def record_knowledge_review(task_id: str, *, decision: str, reason: str,
                             candidate_ids: list[str] | None = None) -> dict[str, Any]:
-    """Protokolliert die semantische Wissensprüfung vor dem Commit.
+    """Logs the semantic knowledge review before the commit.
 
-    Die Validierung der Candidate-Buckets geschieht in knowledge.review_task;
-    der Ledger hält nur das append-only Ergebnis fest.
+    Validation of the candidate buckets happens in knowledge.review_task;
+    the ledger only records the append-only result.
     """
     task = get_task(task_id)
     if task is None:
-        raise KeyError(f"Unbekannter Task: {task_id}")
+        raise KeyError(f"Unknown task: {task_id}")
     if task.get("state") in TERMINAL_STATES:
-        raise ValueError("Knowledge Review braucht einen offenen Task")
+        raise ValueError("Knowledge Review needs an open task")
     if task.get("state") != "INDEPENDENT_VERIFY":
         raise ValueError(
-            "Knowledge Review ist erst im Zustand INDEPENDENT_VERIFY zulässig"
+            "Knowledge Review is only permitted in the INDEPENDENT_VERIFY state"
         )
     normalized = decision.strip().lower()
     if normalized not in ("none", "captured", "deferred"):
-        raise ValueError(f"Unbekannte Knowledge-Review-Entscheidung: {decision}")
+        raise ValueError(f"Unknown Knowledge Review decision: {decision}")
     if not reason.strip():
-        raise ValueError("Knowledge Review braucht eine Begründung")
+        raise ValueError("Knowledge Review needs a justification")
     payload = {
         "decision": normalized,
         "reason": reason.strip(),
@@ -265,7 +265,7 @@ def record_knowledge_review(task_id: str, *, decision: str, reason: str,
 
 
 def _verification_passed(value: str | None) -> bool:
-    """Akzeptiert nur ein explizites PASS-Urteil, keine beiläufige Erwähnung."""
+    """Accepts only an explicit PASS verdict, not an incidental mention."""
     if not value or not value.strip():
         return False
     text = value.strip()
@@ -280,7 +280,7 @@ def _verification_passed(value: str | None) -> bool:
 
 
 def completion_readiness(task_id: str) -> dict[str, Any]:
-    """Prüft deterministisch, ob ein Task auf COMMITTED wechseln darf."""
+    """Deterministically checks whether a task may switch to COMMITTED."""
     task = get_task(task_id)
     if task is None:
         return {"task_id": task_id, "ready": False,
@@ -299,7 +299,7 @@ def completion_readiness(task_id: str) -> dict[str, Any]:
         )
         missing = [field for field in required_contract if not str(task.get(field) or "").strip()]
         if missing:
-            reasons.append("Task Contract unvollständig: " + ", ".join(missing))
+            reasons.append("Task Contract incomplete: " + ", ".join(missing))
 
     with connect() as connection:
         run = connection.execute(
@@ -309,21 +309,21 @@ def completion_readiness(task_id: str) -> dict[str, Any]:
         ).fetchone()
     run_data = dict(run) if run else None
     if run_data is None:
-        reasons.append("Kein abgeschlossener Run vorhanden")
+        reasons.append("No completed run present")
     else:
         if str(run_data.get("outcome") or "").upper() != "PASS":
-            reasons.append("Der letzte abgeschlossene Run hat nicht outcome=PASS")
+            reasons.append("The last completed run does not have outcome=PASS")
         if not str(run_data.get("objective_tests") or "").strip():
-            reasons.append("Objective-Test-Evidenz fehlt")
+            reasons.append("Objective test evidence missing")
         if not _verification_passed(run_data.get("verification")):
-            reasons.append("Unabhängige Verifikation fehlt oder ist nicht explizit PASS")
+            reasons.append("Independent verification missing or not explicitly PASS")
         if str(task.get("risk_class", "")).upper() in ("R1", "R2", "R3") \
                 and not str(run_data.get("change_summary") or "").strip():
-            reasons.append("Änderungszusammenfassung fehlt")
+            reasons.append("Change summary missing")
 
     review = latest_knowledge_review(task_id)
     if review is None:
-        reasons.append("Knowledge Review wurde nicht dokumentiert")
+        reasons.append("Knowledge Review was not documented")
     else:
         decision = str(review.get("decision") or "").lower()
         reason = str(review.get("reason") or "").strip()
@@ -336,17 +336,17 @@ def completion_readiness(task_id: str) -> dict[str, Any]:
                  or (decision in ("captured", "deferred") and bool(candidate_ids)))
         )
         if not structurally_valid:
-            reasons.append("Knowledge Review ist strukturell ungültig")
+            reasons.append("Knowledge Review is structurally invalid")
         if run_data is not None:
             try:
                 reviewed = datetime.fromisoformat(str(review.get("reviewed_utc") or ""))
                 finished = datetime.fromisoformat(str(run_data.get("finished_utc") or ""))
             except ValueError:
-                reasons.append("Knowledge Review enthält keinen gültigen Zeitpunkt")
+                reasons.append("Knowledge Review does not contain a valid timestamp")
             else:
                 if reviewed <= finished:
                     reasons.append(
-                        "Knowledge Review ist älter als der letzte abgeschlossene Run"
+                        "Knowledge Review is older than the last completed run"
                     )
 
     return {
@@ -360,7 +360,7 @@ def completion_readiness(task_id: str) -> dict[str, Any]:
 
 
 def set_state(task_id: str, state: str, detail: Any = None) -> None:
-    """Setzt den Task-Zustand nur entlang der erlaubten State Machine."""
+    """Sets the task state only along the allowed state machine."""
     if state not in STATES:
         raise ValueError(f"Unbekannter Zustand: {state}")
     task = get_task(task_id)
@@ -372,18 +372,18 @@ def set_state(task_id: str, state: str, detail: Any = None) -> None:
                   detail={"state": state, "detail": detail})
         return
     if state not in ALLOWED_TRANSITIONS.get(current, set()):
-        raise ValueError(f"Ungültiger Zustandswechsel: {current} -> {state}")
+        raise ValueError(f"Invalid state transition: {current} -> {state}")
     if state == "COMMITTED":
         readiness = completion_readiness(task_id)
         if not readiness["ready"]:
-            raise ValueError("Commit-Gate blockiert: " + "; ".join(readiness["reasons"]))
+            raise ValueError("Commit gate blocked: " + "; ".join(readiness["reasons"]))
     with connect() as connection:
         cursor = connection.execute(
             "UPDATE tasks SET state = ? WHERE task_id = ? AND state = ?",
             (state, task_id, current),
         )
         if cursor.rowcount != 1:
-            raise RuntimeError("Taskzustand wurde parallel verändert; erneut lesen")
+            raise RuntimeError("Task state was changed concurrently; read again")
     log_event("STATE_CHANGE", task_id=task_id, detail={"state": state, "detail": detail})
 
 
@@ -396,7 +396,7 @@ def get_task(task_id: str) -> dict[str, Any] | None:
 
 
 def open_tasks() -> list[dict[str, Any]]:
-    """Tasks, die weder committed noch endgültig fehlgeschlagen sind."""
+    """Tasks that are neither committed nor definitively failed."""
     placeholders = ",".join("?" for _ in OPEN_STATES)
     with connect() as connection:
         rows = connection.execute(
@@ -419,7 +419,7 @@ def start_run(task_id: str | None, agent: str, tool: str, method: str,
 
 
 def finish_run(run_id: str, outcome: str, **fields: Any) -> None:
-    """Schließt einen Run ab. Erlaubte Felder entsprechen den Spalten von runs."""
+    """Closes out a run. Allowed fields correspond to the columns of runs."""
     allowed = {
         "change_summary", "objective_tests", "verification", "duration_ms",
         "retries", "error", "rollback", "baseline_ref", "fingerprint",
@@ -441,7 +441,7 @@ def finish_run(run_id: str, outcome: str, **fields: Any) -> None:
 
 
 def write_checkpoint(data: dict[str, Any]) -> None:
-    """Sichert den Fortsetzungspunkt für Neustart oder Kontingentende."""
+    """Saves the resume point for restart or quota exhaustion."""
     paths.ensure_dirs()
     payload = dict(data)
     payload["written_utc"] = utcnow()
@@ -469,7 +469,7 @@ def recent_events(limit: int = 20) -> list[dict[str, Any]]:
 
 
 class timed:
-    """Kontextmanager, der die Dauer eines Abschnitts in Millisekunden misst."""
+    """Context manager that measures the duration of a section in milliseconds."""
 
     def __enter__(self) -> "timed":
         self._start = time.monotonic()

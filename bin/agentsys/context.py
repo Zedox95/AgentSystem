@@ -1,8 +1,8 @@
-"""Reproduzierbare Kontextpakete aus dem verwalteten Second Brain.
+"""Reproducible context packages from the managed second brain.
 
-Der Builder schreibt nichts in den Vault. Er verwendet ausschliesslich die
-verwaltete Nur-Lese-Suche, bindet jede Aussage an Pfad und Datei-Hash und
-schneidet Auszuege deterministisch auf das vorgegebene Budget zu.
+The builder writes nothing to the vault. It uses exclusively the
+managed read-only search, ties every statement to a path and file hash,
+and trims excerpts deterministically to the given budget.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .contracts import ContextItem, ContextPackage, ContractError, canonical_jso
 
 
 def estimate_tokens(value: Any) -> int:
-    """Konservative, modellunabhaengige Schaetzung: vier UTF-8-Zeichen/Token."""
+    """Conservative, model-agnostic estimate: four UTF-8 characters per token."""
     return max(1, math.ceil(len(canonical_json(value)) / 4))
 
 
@@ -86,7 +86,7 @@ def _fit_item(match: dict[str, Any], remaining: int) -> tuple[ContextItem | None
 def build(vault_root: str | Path, query: str, *, entity: str | None = None,
           project: str | None = None, statuses: set[str] | None = None,
           token_budget: int = 2_000, limit: int = 20) -> ContextPackage:
-    """Baut ein stabiles, quellenbelegtes Kontextpaket ohne Seiteneffekte."""
+    """Builds a stable, source-backed context package without side effects."""
     if not 128 <= token_budget <= 100_000:
         raise ContractError("token_budget ausserhalb 128..100000")
     root = Path(vault_root).resolve()

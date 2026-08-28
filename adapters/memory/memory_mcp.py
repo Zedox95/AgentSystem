@@ -30,14 +30,14 @@ def _result(payload: Any) -> dict[str, Any]:
 
 
 def _error(message: str) -> dict[str, Any]:
-    safe = ledger.redact(str(message)) or "Unbekannter Fehler"
+    safe = ledger.redact(str(message)) or "Unknown error"
     return {"content": [{"type": "text", "text": safe}], "isError": True}
 
 
 def _require(arguments: dict[str, Any], *names: str) -> None:
     missing = [name for name in names if arguments.get(name) in (None, "")]
     if missing:
-        raise ContractError("Pflichtfelder fehlen: " + ", ".join(missing))
+        raise ContractError("Required fields missing: " + ", ".join(missing))
 
 
 def _candidate(arguments: dict[str, Any], *, created_by: str) -> KnowledgeCandidate:
@@ -74,7 +74,7 @@ def memory_read_managed_note(arguments: dict[str, Any]) -> dict[str, Any]:
             found = (path, meta, text)
             break
     if found is None:
-        raise ContractError("Notiz ist nicht vorhanden oder nicht AgentSystem-verwaltet")
+        raise ContractError("Note does not exist or is not AgentSystem-managed")
     path, meta, note_text = found
     payload = knowledge._managed_payload(note_text, meta["entity"])
     safe_payload = json.loads(ledger.redact(json.dumps(payload, ensure_ascii=False)) or "{}")
@@ -94,18 +94,18 @@ def _existing_target(candidate: KnowledgeCandidate) -> tuple[Path, str]:
     root = knowledge.DEFAULT_VAULT.resolve()
     existing = knowledge._entity_notes(root, candidate.entity)
     if len(existing) > 1:
-        raise ContractError("Mehrere verwaltete Notizen fuer diese Entitaet; manuelle Pruefung noetig")
+        raise ContractError("Multiple managed notes for this entity; manual review needed")
     if existing:
         return existing[0], file_hash(existing[0])
     if not candidate.target_note:
-        raise ContractError("Neue Fakten brauchen target_note in 01 Inbox, 03 Bereiche oder 04 Ressourcen")
+        raise ContractError("New facts need target_note in 01 Inbox, 03 Bereiche, or 04 Ressourcen")
     relative = Path(candidate.target_note)
     if not relative.parts or relative.parts[0] not in NEW_NOTE_ROOTS:
-        raise ContractError("Neue Notizen sind nur in 01 Inbox, 03 Bereiche oder 04 Ressourcen erlaubt")
+        raise ContractError("New notes are only allowed in 01 Inbox, 03 Bereiche, or 04 Ressourcen")
     target = (root / relative).resolve()
     target.relative_to(root)
     if target.suffix.lower() != ".md":
-        raise ContractError("target_note muss eine Markdown-Datei sein")
+        raise ContractError("target_note must be a Markdown file")
     return target, "NEW"
 
 
@@ -231,7 +231,7 @@ def handle(message: dict[str, Any]) -> dict[str, Any] | None:
     elif method == "tools/call":
         params, name = message.get("params") or {}, (message.get("params") or {}).get("name")
         if name not in TOOLS:
-            result = _error(f"Unbekanntes Werkzeug: {name}")
+            result = _error(f"Unknown tool: {name}")
         else:
             try:
                 result = TOOLS[name][0](params.get("arguments") or {})

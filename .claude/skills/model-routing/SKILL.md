@@ -1,98 +1,98 @@
 ---
 name: model-routing
-description: Entscheidet regelbasiert, welches Modell und welcher Effort für eine Aufgabe angemessen sind, und wie nach einem Fehlschlag eskaliert wird. Einsetzen vor der Delegation an einen Subagenten, bei unklarer Einordnung einer Aufgabe, und wenn ein Versuch gescheitert ist und die Frage ist, ob ein stärkeres Modell überhaupt hilft.
+description: Decides, rule-based, which model and effort level are appropriate for a task, and how to escalate after a failure. Use before delegating to a subagent, when a task is hard to classify, and when an attempt has failed and the question is whether a stronger model would even help.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
 
-# Modellwahl
+# Model selection
 
-## Was hier tatsächlich schaltbar ist
+## What can actually be switched here
 
-**Nicht schaltbar:** Das Modell der laufenden Sitzung. Wenn du das hier liest,
-hat es den Prompt bereits gelesen. Ein Wechsel mitten in der Antwort ist nicht
-möglich, und ihn ungefragt vorzuschlagen ist meist Lärm.
+**Not switchable:** the model of the running session. If you're reading
+this, it has already read the prompt. A switch mid-response isn't possible,
+and suggesting one unprompted is usually just noise.
 
-**Schaltbar:** Das Modell **pro Delegation**. Beim Beauftragen eines
-Subagenten lässt sich das Modell für genau diesen Aufruf setzen. Genau dort
-wirkt Routung — und nur dort.
+**Switchable:** the model **per delegation**. When tasking a subagent, the
+model can be set for exactly that call. That's where routing actually
+matters — and only there.
 
-Daraus folgt die eigentliche Arbeitsweise: Läuft die Sitzung auf dem
-schwächeren Modell und steht echte Denkarbeit an, **delegiere den denkenden
-Teil**, statt einen Sitzungswechsel zu verlangen.
+This implies the real working method: if the session is running on the
+weaker model and real thinking work is at hand, **delegate the thinking
+part** instead of demanding a session switch.
 
-## Einordnung abfragen
+## Query the classification
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py route --prompt "<Auftrag>"
+python C:\AgentSystem\bin\agentctl.py route --prompt "<task>"
 ```
 
-Regelbasiert, ohne Modellaufruf. Ein Klassifizierer, der selbst ein Modell
-befragt, verbraucht genau das Kontingent, das er einsparen soll.
+Rule-based, without a model call. A classifier that itself queries a model
+consumes exactly the budget it's supposed to save.
 
-Der `UserPromptSubmit`-Hook macht das bei jedem Auftrag automatisch und meldet
-sich nur, wenn es etwas zu sagen gibt.
+The `UserPromptSubmit` hook does this automatically for every task and only
+speaks up when there's something to say.
 
-## Die Regel
+## The rule
 
-| Situation | Modell | Effort |
+| Situation | Model | Effort |
 |---|---|---|
-| Abfrage, Status, Inventar, klar umrissene Ausführung | `sonnet` | low–medium |
-| Bekannter Ablauf mit vorhandenem Skill | `sonnet` | medium |
-| R2 — reale Änderung, aber klar | `sonnet` | **high** |
-| Offene Frage: warum, Ursache, vergleiche, entwirf | `opus` | high |
-| R3 — schwer umkehrbar | `opus` | high |
-| Widersprüchliche Evidenz, zwei Ansätze gescheitert | `opus` | xhigh |
+| Query, status, inventory, clearly scoped execution | `sonnet` | low–medium |
+| Known workflow with an existing skill | `sonnet` | medium |
+| R2 — real change, but clear | `sonnet` | **high** |
+| Open question: why, root cause, compare, design | `opus` | high |
+| R3 — hard to reverse | `opus` | high |
+| Contradictory evidence, two approaches failed | `opus` | xhigh |
 
-**Effort vor Modell.** `sonnet` mit `high` ist bei kniffligen, aber klar
-umrissenen Aufgaben oft besser als `opus` mit dem Standard — und deutlich
-sparsamer. Wenn ein Ergebnis zu flach wirkt, ist mehr Effort der bessere
-erste Griff.
+**Effort before model.** `sonnet` with `high` is often better than `opus`
+with the default on tricky but clearly scoped tasks — and noticeably more
+economical. When a result feels too shallow, more effort is the better first
+move.
 
-## Warum nicht immer das stärkste Modell
+## Why not always the strongest model
 
-Weil die Intelligenz dieses Systems bewusst nicht allein im Modell liegt,
-sondern in Skills, Regeln, objektiven Tests, Experience Store und Ledger. Ein
-starkes Modell, das einen bereits beschriebenen Ablauf nochmal herleitet,
-liefert dasselbe Ergebnis und verbraucht ein knappes Kontingent.
+Because this system's intelligence deliberately does not live in the model
+alone, but in skills, rules, objective tests, the experience store, and the
+ledger. A strong model re-deriving a workflow that's already documented
+delivers the same result and burns scarce budget.
 
-Das Kontingent ist die eigentliche Ressource. Wer es für Routine verbraucht,
-hat es nicht, wenn eine Diagnose wirklich hängt.
+The budget is the actual resource. Whoever spends it on routine work doesn't
+have it when a diagnosis really gets stuck.
 
-## Eskalation nach einem Fehlschlag
+## Escalation after a failure
 
-Ein stärkeres Modell repariert keinen Tippfehler, keine fehlende Berechtigung
-und keinen nicht erreichbaren Host. Eskalation greift nur bei Scheitern aus
-**Denkgründen**.
+A stronger model doesn't fix a typo, a missing permission, or an
+unreachable host. Escalation only applies when failure stems from
+**reasoning** limitations.
 
-| Auslöser | Reaktion |
+| Trigger | Reaction |
 |---|---|
-| Verifier meldet `INCONCLUSIVE` | Effort erhöhen, Modell **behalten** — es fehlt Evidenz, nicht Denkleistung |
-| Verifier meldet `FAIL` | von `sonnet` auf `opus`, mit Evidenz-Handoff |
-| Zwei inhaltlich verschiedene Ansätze gescheitert | `opus` mit `xhigh` |
-| Bereits auf `opus` und weiter gescheitert | nicht weiter eskalieren — Hauptsitzung um `/codex:rescue` oder `/codex:review` bitten oder an den Benutzer melden |
+| Verifier reports `INCONCLUSIVE` | increase effort, **keep** the model — evidence is missing, not reasoning ability |
+| Verifier reports `FAIL` | escalate from `sonnet` to `opus`, with evidence handoff |
+| Two substantively different approaches failed | `opus` with `xhigh` |
+| Already on `opus` and still failing | don't escalate further — ask the main session for `/codex:rescue` or `/codex:review`, or report to the user |
 
-Eine Eskalation ist immer ein **neuer Auftrag**, kein Weiterreichen des
-Kontexts. Der Handoff enthält: ursprüngliches Ziel, beobachtete Versionen,
-rohe Evidenz, geänderten Zustand, versuchte Hypothesen, Fehlerausgaben,
-Verifier-Befund, offene Acceptance Criteria.
+An escalation is always a **new task**, not a context pass-through. The
+handoff contains: original goal, observed versions, raw evidence, changed
+state, hypotheses tried, error output, verifier finding, open acceptance
+criteria.
 
 ```bash
 python C:\AgentSystem\bin\agentctl.py route --escalate --model sonnet --verdict FAIL
 ```
 
-## Was die Einordnung nicht ist
+## What the classification is not
 
-Ein Hinweis, keine Anweisung. Sie kennt nur den Wortlaut des Auftrags, nicht
-das System. Widerspricht sie dem, was du tatsächlich misst, **gilt die
-Messung**. Eine als Routine eingestufte Aufgabe, die sich als verworren
-herausstellt, wird zur Denkaufgabe — nicht umgekehrt.
+A hint, not an instruction. It knows only the wording of the task, not the
+system. If it contradicts what you actually measure, **the measurement
+wins**. A task classified as routine that turns out to be convoluted becomes
+a reasoning task — not the other way around.
 
-Der Klassifizierer meldet selbst, wenn er unsicher ist: bei sehr kurzen
-Aufträgen und bei mehreren gleich starken Domänen. Dann selbst entscheiden.
+The classifier itself reports when it's unsure: for very short tasks and for
+tasks spanning several equally strong domains. Decide for yourself then.
 
-## Aus der Nutzung lernen
+## Learning from usage
 
-Die Einordnungen landen als `PROMPT_ROUTED` im Ledger. Damit lässt sich später
-prüfen, ob die Regel trägt — etwa ob als Routine eingestufte Aufgaben
-überdurchschnittlich oft eskaliert werden. Das wäre ein Grund, die Muster
-nachzuschärfen, nicht das Modell hochzudrehen.
+Classifications land as `PROMPT_ROUTED` in the ledger. This later allows
+checking whether the rule holds up — for example, whether tasks classified
+as routine get escalated disproportionately often. That would be a reason to
+refine the patterns, not to crank up the model.

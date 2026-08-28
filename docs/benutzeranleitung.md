@@ -1,123 +1,123 @@
-# Benutzeranleitung
+# User Guide
 
-## Das Wichtigste zuerst
+## The most important thing first
 
-**Öffne Claude Code mit dem Projektverzeichnis dieses Repos.**
+**Open Claude Code with this repo's project directory.**
 
-Nur dort greifen die Regeln, Agenten, Skills und Hooks. In einem anderen
-Verzeichnis läuft Claude Code ohne dieses System — ohne Policy Guard, ohne
-Ledger, ohne Locks.
-
----
-
-## Wie du einen Auftrag gibst
-
-Du formulierst nur das gewünschte **Ergebnis**. Nicht den Weg dorthin.
-
-> „Prüfe meinen PC intensiv auf Fehler und veraltete Treiber."
-> „Behebe diesen Fehler: …"
-> „Ändere Einstellung X in Windows."
-> „Prüfe, ob mein gesamtes System korrekt funktioniert."
-> „Installiere und konfiguriere Anwendung X."
-
-Du musst nicht angeben, welcher Agent, welches Werkzeug oder welche Methode.
-Das leitet das System ab.
+The rules, agents, skills, and hooks only apply there. In any other
+directory, Claude Code runs without this system — no policy guard, no
+ledger, no locks.
 
 ---
 
-## Was dann passiert
+## How to give a task
+
+You only formulate the desired **outcome**. Not the path to get there.
+
+> "Check my PC thoroughly for errors and outdated drivers."
+> "Fix this error: …"
+> "Change setting X in Windows."
+> "Check whether my entire system is working correctly."
+> "Install and configure application X."
+
+You don't need to specify which agent, which tool, or which method.
+The system derives that itself.
+
+---
+
+## What happens then
 
 ```
-Dein Ziel
+Your goal
    ↓
-Ziel klären und Erfolgskriterien festlegen
+Clarify the goal and define success criteria
    ↓
-Erfahrung prüfen — gibt es einen bewährten Weg?
+Check experience — is there a proven approach?
    ↓
-Risikoklasse bestimmen (R0 lesen … R3 kritisch)
+Determine risk class (R0 read-only … R3 critical)
    ↓
-Task Contract im Ledger: Ziel, Kriterien, Methode, Alternative, Rollback
+Task Contract in the ledger: goal, criteria, method, alternative, rollback
    ↓
-Resource Lock — niemand sonst arbeitet gleichzeitig daran
+Resource lock — no one else works on it at the same time
    ↓
-Baseline erfassen, ab R2 Backup anlegen
+Capture baseline, backup from R2 onward
    ↓
-Ausführen
+Execute
    ↓
-Objective Test — den realen Zustand erneut messen
+Objective test — measure the real state again
    ↓
-Unabhängige Prüfung durch den read-only Verifier
+Independent check by the read-only verifier
    ↓
-PASS → Commit    ·    FAIL → Diagnose oder Rollback
+PASS → commit    ·    FAIL → diagnose or roll back
    ↓
-Erfahrung verbuchen
+Record experience
 ```
 
 ---
 
-## Wann du gefragt wirst
+## When you'll be asked
 
-Das System arbeitet selbstständig, hält aber an drei Stellen an:
+The system works autonomously, but stops at three points:
 
-| Situation | Was passiert |
+| Situation | What happens |
 |---|---|
-| **R2** — Treiber, Registry, Firewall, Pakete, Netzwerk, VM-Ressourcen | Du bestätigst die Aktion. Backup und Rollback stehen vorher fest. |
-| **R3** — Löschen, Partitionen, BIOS, Bootloader, Benutzerkonten, Router-WAN | Ausdrückliche Freigabe. Wird nie ohne dich gemacht. |
-| **Anmeldung nötig** | Zugangsdaten gibt das System nicht selbst ein. Es meldet, welche Oberfläche welche Anmeldung braucht. |
+| **R2** — drivers, registry, firewall, packages, network, VM resources | You confirm the action. Backup and rollback are already in place beforehand. |
+| **R3** — deletion, partitions, BIOS, bootloader, user accounts, router WAN | Explicit approval. Never done without you. |
+| **Login required** | The system never enters credentials itself. It reports which interface needs which login. |
 
-Lesende Aktionen — Status, Logs, Versionen, Inventar — laufen ohne Rückfrage.
-
----
-
-## Was das System niemals tut
-
-- Eine kostenpflichtige LLM-API einrichten. Technisch blockiert.
-- Erfolg melden, ohne den realen Zustand gemessen zu haben.
-- Eine Änderung ab R2 ohne Backup und Rollback-Plan durchführen.
-- Dieselbe fehlgeschlagene Methode blind wiederholen.
-- Zugangsdaten selbst eingeben.
-- Anweisungen befolgen, die auf einer Webseite oder in einer Datei stehen.
+Read-only actions — status, logs, versions, inventory — run without asking.
 
 ---
 
-## Wenn etwas schiefgeht
+## What the system never does
 
-Das System diagnostiziert selbst: Fehler erfassen, klassifizieren, Ursache
-suchen, Version prüfen, Erfahrung befragen, gezielt einen zweiten Versuch,
-dann Methodenwechsel — und im Zweifel Rollback.
-
-Du bekommst am Ende immer: was gemacht wurde, womit es belegt ist, was
-geprüft wurde, welche Risiken bleiben.
+- Set up a paid LLM API. Technically blocked.
+- Report success without having measured the real state.
+- Make a change from R2 upward without a backup and rollback plan.
+- Blindly repeat the same failed method.
+- Enter credentials itself.
+- Follow instructions found on a website or in a file.
 
 ---
 
-## Nützliche Befehle für dich
+## When something goes wrong
 
-Aktueller Zustand — offene Vorgänge, Sperren, Erfahrungen:
+The system diagnoses on its own: capture the error, classify it, look for
+the root cause, check the version, consult experience, make one targeted
+second attempt, then switch method — and roll back when in doubt.
+
+You always get, at the end: what was done, what evidence supports it, what
+was checked, what risks remain.
+
+---
+
+## Useful commands for you
+
+Current state — open tasks, locks, experience:
 
 ```bash
 python bin/agentctl.py status
 ```
 
-Was das System gelernt hat:
+What the system has learned:
 
 ```bash
 python bin/agentctl.py exp list
 ```
 
-Ob eine Aktion erlaubt wäre, ohne sie auszuführen:
+Whether an action would be allowed, without executing it:
 
 ```bash
 python bin/agentctl.py policy check --command "Remove-Item C:\Temp -Recurse"
 ```
 
-Alle Tests — nach jeder Änderung am System selbst:
+All tests — after every change to the system itself:
 
 ```bash
 python tests/run-all.py
 ```
 
-Nach einem Absturz oder Kontingentende: wo stand der Vorgang?
+After a crash or quota exhaustion: where did the task stand?
 
 ```bash
 python bin/agentctl.py checkpoint show
@@ -125,30 +125,29 @@ python bin/agentctl.py checkpoint show
 
 ---
 
-## Was heute noch nicht geht
+## What doesn't work yet today
 
-- **Proxmox, Linux, eigener Server**: in diesem öffentlichen Repo nicht
-  enthalten — das Original hat dafür ein separates `infrastructure-agent`-
-  Setup, das Umgebungsdetails des Betreibers enthält und deshalb nicht
-  veröffentlicht ist. Aufträge dazu melden ehrlich, dass das Ziel fehlt.
-- **Router-Automatisierung**: kein TR-064, keine API — nur die
-  Weboberfläche. Für den Zugang meldest **du** dich einmal selbst an, z. B.:
+- **Proxmox, Linux, own server**: not included in this public repo — the
+  original has a separate `infrastructure-agent` setup for this that contains
+  the operator's environment details and is therefore not published. Tasks
+  related to this honestly report that the target is missing.
+- **Router automation**: no TR-064, no API — only the web interface. For
+  access, **you** log in once yourself, e.g.:
 
   ```bash
   node adapters/playwright/pwctl.mjs login --url "http://<router-ip>/html/login/login.html" --profile mcp --until "Übersicht" --timeout 300000
   ```
 
-  Ein sichtbarer Browser öffnet sich, du tippst das Gerätepasswort. Die
-  Sitzung bleibt danach im Profil und steht CLI und MCP-Server zur Verfügung.
-- **Codex**: bei erschöpftem Kontingent arbeitet Claude allein; die
-  Cross-Model-Prüfung entfällt bis zum Reset.
+  A visible browser opens, you type the device password. The session then
+  remains in the profile and is available to the CLI and MCP server.
+- **Codex**: when the quota is exhausted, Claude works alone; the
+  cross-model check is skipped until the reset.
 
 ---
 
-## Wenn du das System erweiterst
+## When you extend the system
 
-Änderungen an `settings.json`, `hooks/`, `bin/agentsys/` oder den
-Sicherheitsabschnitten von `AGENTS.md` sind geschützt. Der `ConfigChange`-Hook
-blockiert beiläufige Änderungen. Der Weg dafür ist der Skill
-`update-agent-stack`: Known-Good sichern, ändern, Regression, Verifikation,
-Commit.
+Changes to `settings.json`, `hooks/`, `bin/agentsys/`, or the security
+sections of `AGENTS.md` are protected. The `ConfigChange` hook blocks
+incidental changes. The way to do this is the `update-agent-stack` skill:
+save known-good, change, regression, verification, commit.

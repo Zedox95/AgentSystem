@@ -1,17 +1,17 @@
-"""agentctl — Kommandozeile der Control Plane.
+"""agentctl — command line of the control plane.
 
-Damit Skills tatsächlich handeln können statt nur zu beschreiben. Jede
-Ausgabe ist JSON, damit sie maschinell auswertbar ist.
+So that skills can actually act instead of just describing. Every output
+is JSON, so it can be evaluated by machine.
 
-    python C:\\AgentSystem\\bin\\agentctl.py <befehl> [optionen]
+    python C:\\AgentSystem\\bin\\agentctl.py <command> [options]
 
-Befehle:
+Commands:
     task new|state|show|open|readiness
-                                    Task Contract, State Machine und Commit-Gate
-    lock acquire|release|list       Resource Locks
-    run start|finish                Run Ledger
+                                    Task contract, state machine, and commit gate
+    lock acquire|release|list       Resource locks
+    run start|finish                Run ledger
     exp record|promote|deprecate|best|list|stale
-    env show|known-good             Environment Fingerprint
+    env show|known-good             Environment fingerprint
     knowledge submit|list|search|approve|reject|review
     context build
     eval list
@@ -19,8 +19,8 @@ Befehle:
     skill-candidate create|list|report
     supervisor check
     checkpoint show|clear
-    policy check                    Policy Guard manuell befragen
-    status                          Kompakter Gesamtzustand
+    policy check                    Query the policy guard manually
+    status                          Compact overall state
 """
 
 from __future__ import annotations
@@ -103,8 +103,8 @@ def cmd_task(args: argparse.Namespace) -> int:
 def cmd_lock(args: argparse.Namespace) -> int:
     if args.action == "acquire":
         try:
-            # Ueber die Kommandozeile gesetzte Locks gehoeren dem Task, nicht
-            # diesem Prozess - er endet sofort nach dem Aufruf.
+            # Locks set via the command line belong to the task, not to this
+            # process - it ends immediately after the call.
             owner = "task" if args.task_id else "process"
             lock = locks.acquire(args.resource, agent=args.agent,
                                  task_id=args.task_id, reason=args.reason or "",
@@ -337,7 +337,7 @@ def cmd_policy(args: argparse.Namespace) -> int:
 
 
 def cmd_route(args: argparse.Namespace) -> int:
-    """Ordnet einen Auftrag ein oder bestimmt die naechste Eskalationsstufe."""
+    """Classifies a task or determines the next escalation tier."""
     if args.escalate:
         model, effort, reason = routing.escalate(
             args.model or routing.ROUTINE,

@@ -1,18 +1,18 @@
-"""ConfigChange — Control Plane schützen.
+"""ConfigChange — protect the control plane.
 
-Änderungen an Hooks, Berechtigungen und Skill-Konfiguration werden nicht
-beiläufig durchgelassen. Sie gehören in den regulären Wartungsablauf mit
-Baseline, Backup, Regression und Verifikation (AGENTS.md Abschnitt 22).
+Changes to hooks, permissions, and skill configuration are not passed
+through casually. They belong in the regular maintenance workflow with
+baseline, backup, regression, and verification (AGENTS.md section 22).
 
-Exit 2 blockiert die Änderung — außer bei `policy_settings`, die laut
-Dokumentation nicht blockierbar sind; dort wird nur protokolliert.
+Exit 2 blocks the change — except for `policy_settings`, which per the
+documentation cannot be blocked; those are only logged.
 """
 
 from __future__ import annotations
 
 import hooklib
 
-# Schlüssel, deren Änderung die Sicherheitsgrenze verschiebt.
+# Keys whose change would shift the security boundary.
 PROTECTED_KEYS = (
     "hooks",
     "permissions",
@@ -50,11 +50,11 @@ def main() -> None:
 
     if protected and source != "policy_settings":
         hooklib.block(
-            f"ConfigChange blockiert: '{key}' gehört zur Control Plane. "
-            "Änderungen an Hooks, Berechtigungen oder Umgebungsvariablen laufen "
-            "über den Wartungsablauf — Baseline, Backup, Änderung, Regression, "
-            "Verifikation, Commit. Wenn das beabsichtigt ist, den Vorgang "
-            "ausdrücklich als solchen starten."
+            f"ConfigChange blocked: '{key}' belongs to the control plane. "
+            "Changes to hooks, permissions, or environment variables go "
+            "through the maintenance workflow — baseline, backup, change, "
+            "regression, verification, commit. If this is intentional, "
+            "start the process explicitly as such."
         )
 
     hooklib.emit_nothing()

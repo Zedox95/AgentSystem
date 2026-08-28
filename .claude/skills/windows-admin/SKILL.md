@@ -1,97 +1,96 @@
 ---
 name: windows-admin
-description: Wählt für eine Windows-Aufgabe den zuverlässigsten Weg - native API und CIM, PowerShell, COM, UFO² UI Automation oder als letzter Ausweg visuelles Computer Use - und kennt die Besonderheiten dieses Rechners wie PowerShell 5.1 ohne pwsh und die fehlende Elevation. Einsetzen für Systemdiagnose, Treiber, Dienste, Registry, Windows-Einstellungen und GUI-Automatisierung auf diesem PC.
+description: Chooses the most reliable route for a Windows task - native API and CIM, PowerShell, COM, UFO² UI Automation, or visual computer use as a last resort - and knows this machine's specifics such as PowerShell 5.1 without pwsh and the lack of elevation. Use for system diagnostics, drivers, services, registry, Windows settings, and GUI automation on this PC.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
 
-# Windows-Aufgaben richtig routen
+# Routing Windows tasks correctly
 
-## Umgebung dieses Rechners
+## This machine's environment
 
-Diese Punkte sind gemessen, nicht angenommen:
+These points are measured, not assumed:
 
-- Windows 11 Pro 25H2, Build **26200**. Die Registry meldet `ProductName =
-  "Windows 10 Pro"` — bekanntes stale-Key-Artefakt. Der Build entscheidet.
-- `powershell.exe` ist **Windows PowerShell 5.1**. **Kein `pwsh` im PATH.**
-  Dort fehlen: `Test-Json`, `&&`, `||`, `??`, `?.`, `?:`, `-AsHashtable`.
-- Die Session läuft **ohne** Administratorrechte.
-- Git-Bash steht über das Bash-Tool zur Verfügung, PowerShell über das
-  PowerShell-Tool. Beide haben eigene Syntax — nicht vermischen.
+- Windows 11 Pro 25H2, build **26200**. The registry reports `ProductName =
+  "Windows 10 Pro"` — a known stale-key artifact. The build is what counts.
+- `powershell.exe` is **Windows PowerShell 5.1**. **No `pwsh` in PATH.**
+  Missing there: `Test-Json`, `&&`, `||`, `??`, `?.`, `?:`, `-AsHashtable`.
+- The session runs **without** administrator rights.
+- Git Bash is available via the Bash tool, PowerShell via the PowerShell
+  tool. Both have their own syntax — don't mix them.
 
-## Methodenwahl
+## Choosing a method
 
-Prüfe zuerst die Erfahrung:
+Check experience first:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key windows.<aufgabenart>
+python C:\AgentSystem\bin\agentctl.py exp best --key windows.<task-type>
 ```
 
-Ohne passenden Eintrag gilt diese Reihenfolge — als Präferenz, nicht als
-Zwang:
+Without a matching entry, this order applies — as a preference, not a
+mandate:
 
-**1. CIM/WMI und native API.** Strukturiert, maschinenlesbar, verifizierbar.
-`Get-CimInstance Win32_PnPSignedDriver`, `Win32_Service`, `Win32_LogicalDisk`.
+**1. CIM/WMI and native API.** Structured, machine-readable, verifiable.
+`Get-CimInstance Win32_PnPSignedDriver`, `Win32_Service`,
+`Win32_LogicalDisk`.
 
-**2. PowerShell-Cmdlets.** `Get-Service`, `Get-PnpDevice`, `Get-WinEvent`,
-`Get-NetAdapter`. Literale Pfade, keine Rateversuche.
+**2. PowerShell cmdlets.** `Get-Service`, `Get-PnpDevice`, `Get-WinEvent`,
+`Get-NetAdapter`. Literal paths, no guessing.
 
-**3. COM.** Wenn eine Anwendung ein Automationsmodell hat (Office, Explorer),
-ist es zuverlässiger als jede GUI-Bedienung.
+**3. COM.** When an application has an automation model (Office, Explorer),
+it's more reliable than any GUI operation.
 
-**4. UFO² UI Automation** über `adapters/ufo/`. Nur wenn die Aufgabe
-tatsächlich eine GUI erfordert und keine der obigen Ebenen sie abdeckt.
+**4. UFO² UI Automation** via `adapters/ufo/`. Only when the task genuinely
+requires a GUI and none of the above layers cover it.
 
-**5. Visuelle Erkennung.** Nur wenn UI Automation die Steuerelemente nicht
-findet.
+**5. Visual recognition.** Only when UI Automation can't find the controls.
 
-**6. Rohe Koordinaten.** Letzter Ausweg. Nicht reproduzierbar, bricht bei
-jeder Auflösungs- oder Layoutänderung.
+**6. Raw coordinates.** Last resort. Not reproducible, breaks with every
+resolution or layout change.
 
-**UFO² ist keine Abkürzung.** Es ist nicht dazu da, Dateisystem, Rechte oder
-eine fehlende API zu umgehen. Wenn du erwägst, per GUI zu tun, was ein Cmdlet
-kann, ist das die falsche Wahl.
+**UFO² is not a shortcut.** It's not there to bypass the filesystem,
+permissions, or a missing API. If you're considering doing via GUI what a
+cmdlet can do, that's the wrong choice.
 
 ## Elevation
 
-Admin-pflichtig sind unter anderem: Dienständerungen, HKLM-Schreibzugriffe,
-Treiberinstallation, Firewall-Regeln, geplante Aufgaben im System-Kontext.
+Admin-required actions include: service changes, HKLM write access, driver
+installation, firewall rules, scheduled tasks in the system context.
 
-Der Weg ist ein **sichtbarer UAC-Prompt pro Aktion**:
+The way to do this is a **visible UAC prompt per action**:
 `Start-Process powershell -Verb RunAs -ArgumentList ...`
 
-Kein dauerhaft erhöhter Agentenprozess, keine vorbereitete erhöhte Scheduled
-Task für allgemeine Zwecke. Der Benutzer bestätigt jede einzelne Aktion.
-Der Policy Guard eskaliert `-Verb RunAs` ohnehin zur Rückfrage.
+No permanently elevated agent process, no pre-elevated scheduled task for
+general purposes. The user confirms every single action. The policy guard
+escalates `-Verb RunAs` to a confirmation prompt anyway.
 
-## Risiko
+## Risk
 
-| Aufgabe | Klasse |
+| Task | Class |
 |---|---|
-| Inventar, Versionen, Logs lesen, Diagnose | R0 |
-| Dienst neu starten, reversible Einstellung | R1 |
-| Treiber, Registry-Schreibzugriff, Firewall, Paketentfernung, Netzwerk | R2 |
-| Bootloader, BIOS/Firmware, Partitionen, Benutzerkonten, Datenträger | R3 |
+| Inventory, versions, reading logs, diagnostics | R0 |
+| Restart a service, reversible setting | R1 |
+| Driver, registry write access, firewall, package removal, network | R2 |
+| Bootloader, BIOS/firmware, partitions, user accounts, disks | R3 |
 
-Ab R2 zuerst `preflight-change`, danach `verify-change`.
+From R2 up, run `preflight-change` first, then `verify-change`.
 
-## Verifikation
+## Verification
 
-Immer den realen Zustand erneut auslesen — nicht die Ausgabe des ändernden
-Kommandos wiederverwenden. Dazu gehört das Event Log: prüfe auf **neue**
-Einträge seit dem Änderungszeitpunkt, nicht auf das Fehlen von Fehlern
-überhaupt.
+Always re-read the real state — don't reuse the output of the command that
+made the change. This includes the event log: check for **new** entries
+since the time of the change, not merely the absence of errors overall.
 
 ```powershell
-Get-WinEvent -FilterHashtable @{ LogName='System'; Level=1,2; StartTime=$zeitpunkt }
+Get-WinEvent -FilterHashtable @{ LogName='System'; Level=1,2; StartTime=$timestamp }
 ```
 
-## Häufige Fallstricke auf diesem Rechner
+## Common pitfalls on this machine
 
-- `Test-Json` existiert unter 5.1 nicht — Schemaprüfung anders lösen
-- `2>&1` bei nativen Programmen erzeugt in 5.1 ErrorRecords und setzt `$?`
-  auf `$false`, obwohl das Programm mit 0 endete
-- `Set-Content` schreibt ohne `-Encoding utf8` in der ANSI-Codepage
-- `New-Item -Force` auf eine bestehende Datei **leert** sie
-- `-ErrorAction SilentlyContinue` unterdrückt die Ausgabe, nicht den Exit-Code
-- Deutsche Locale-Ausgaben (`tasklist`, `netstat`) sind nicht immer als cp1252
-  dekodierbar — beim Weiterverarbeiten in Python `errors="replace"` setzen
+- `Test-Json` doesn't exist under 5.1 — solve schema validation differently
+- `2>&1` on native programs produces ErrorRecords under 5.1 and sets `$?` to
+  `$false` even though the program exited with 0
+- `Set-Content` without `-Encoding utf8` writes in the ANSI codepage
+- `New-Item -Force` on an existing file **clears** it
+- `-ErrorAction SilentlyContinue` suppresses the output, not the exit code
+- German-locale output (`tasklist`, `netstat`) isn't always decodable as
+  cp1252 — set `errors="replace"` when processing it further in Python

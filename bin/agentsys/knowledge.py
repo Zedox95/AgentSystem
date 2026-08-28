@@ -1,9 +1,9 @@
-"""Kontrollierter Second-Brain-Zugriff.
+"""Controlled second-brain access.
 
-Lesen ist breit, aber standardmaessig auf verwaltete Notizen mit vollstaendigem
-Frontmatter begrenzt. Schreiben geschieht ausschliesslich ueber validierte
-Knowledge Candidates und den Archivist-Pfad mit Lock, Optimistic Concurrency,
-Backup und atomarem Replace.
+Reading is broad but by default limited to managed notes with complete
+frontmatter. Writing happens exclusively through validated knowledge
+candidates and the archivist path, with locking, optimistic concurrency,
+backup, and atomic replace.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ _WORD = re.compile(r"[a-zA-Z0-9_.:-]{2,}")
 
 
 class KnowledgeConflict(ContractError):
-    """Ein Kandidat darf den vorhandenen Wissensstand nicht ueberschreiben."""
+    """A candidate must not overwrite the existing state of knowledge."""
 
 
 def _frontmatter(text: str) -> tuple[dict[str, str], int]:
@@ -82,7 +82,7 @@ def _managed_payload(text: str, entity: str) -> dict[str, Any]:
 
 
 def _is_managed_note(text: str, entity: str) -> bool:
-    """Nur explizit markierte, strukturell gueltige Notizen gelten als verwaltet."""
+    """Only explicitly marked, structurally valid notes count as managed."""
     meta, _ = _frontmatter(text)
     if not _REQUIRED_FRONTMATTER <= set(meta) or meta.get("entity") != entity:
         return False
@@ -96,7 +96,7 @@ def _is_managed_note(text: str, entity: str) -> bool:
 
 
 def _candidate_identity(candidate: KnowledgeCandidate) -> dict[str, Any]:
-    """Semantischer Inhalt ohne fluechtigen Erstellungszeitpunkt und berechnete ID."""
+    """Semantic content without the volatile creation timestamp and computed ID."""
     return {
         key: value for key, value in candidate.to_dict().items()
         if key not in {"candidate_id", "created_utc"}
@@ -104,7 +104,7 @@ def _candidate_identity(candidate: KnowledgeCandidate) -> dict[str, Any]:
 
 
 def _strongest_visible_fact(payload: dict[str, Any]) -> dict[str, Any] | None:
-    """Waehlt die Metadatensicht ohne eine staerkere Quelle herabzustufen."""
+    """Selects the metadata view without downgrading a stronger source."""
     records = [
         record
         for history in payload.get("facts", {}).values()
@@ -188,8 +188,8 @@ def submit(candidate: KnowledgeCandidate | dict[str, Any]) -> dict[str, Any]:
             atomic_write_json(target, payload, exclusive=True)
             duplicate = False
         except FileExistsError:
-            # Parallel entstandener Eintrag wird im naechsten Aufruf vollstaendig
-            # verglichen; niemals ungeprueft als Duplikat behandeln.
+            # An entry created concurrently is fully compared on the next
+            # call; never treated as a duplicate without checking.
             raw = json.loads(target.read_text(encoding="utf-8"))
             existing = KnowledgeCandidate.from_dict(raw)
             if _candidate_identity(existing) != _candidate_identity(entry):
@@ -262,7 +262,7 @@ def _managed_notes(vault_root: str | Path) -> list[tuple[Path, dict[str, str], s
 def search(vault_root: str | Path, query: str, *, entity: str | None = None,
            project: str | None = None, statuses: set[str] | None = None,
            limit: int = 10) -> list[dict[str, Any]]:
-    """Deterministische, rein lesende Metadata-/Volltextsuche."""
+    """Deterministic, read-only metadata/full-text search."""
     if not query.strip() and not entity and not project:
         raise ContractError("Suche braucht query, entity oder project")
     root = Path(vault_root).resolve()
@@ -289,7 +289,7 @@ def search(vault_root: str | Path, query: str, *, entity: str | None = None,
         plain = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
         plain = re.sub(r"<!--.*?-->", " ", plain, flags=re.DOTALL)
         plain = " ".join(plain.split())
-        # Keine Credential-artigen Werte in Suchausgaben tragen.
+        # Do not carry credential-like values into search output.
         from .ledger import redact
         excerpt = redact(plain[:1200]) or ""
         matches.append({
@@ -435,11 +435,12 @@ def approve(candidate_id: str, *, vault_root: str | Path = DEFAULT_VAULT,
 
 def review_task(task_id: str, *, decision: str, reason: str,
                 candidate_ids: list[str] | None = None) -> dict[str, Any]:
-    """Dokumentiert die verpflichtende Wissensprüfung vor COMMITTED.
+    """Documents the mandatory knowledge review before COMMITTED.
 
-    `captured` ist nur für Candidates zulässig, die mit demselben Task bereits
-    über den Archivist akzeptiert wurden. `deferred` hält bewusst offene oder
-    abgelehnte Candidates sichtbar, ohne den Arbeitserfolg umzudeuten.
+    `captured` is only allowed for candidates that have already been
+    accepted through the archivist with the same task. `deferred`
+    deliberately keeps open or rejected candidates visible, without
+    reinterpreting the task's success.
     """
     normalized = decision.strip().lower()
     ids = list(dict.fromkeys(candidate_ids or []))
@@ -458,7 +459,7 @@ def review_task(task_id: str, *, decision: str, reason: str,
             payload = json.loads(path.read_text(encoding="utf-8"))
             if (payload.get("decision") or {}).get("task_id") != task_id:
                 raise ContractError(
-                    f"Captured Candidate gehört nicht zu Task {task_id}: {candidate_id}"
+                    f"Captured candidate does not belong to task {task_id}: {candidate_id}"
                 )
     elif normalized == "deferred":
         if not ids:

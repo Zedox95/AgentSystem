@@ -1,99 +1,98 @@
 ---
 name: infrastructure-admin
-description: Wählt für eine Infrastrukturaufgabe den zuverlässigsten Weg - Proxmox-API, qm und pct, SSH und Bash, Docker, Pterodactyl-API, Ansible oder OpenTofu - und kennt den tatsächlichen Ausbaustand dieser Umgebung. Einsetzen für Linux-Server, VMs, Container, Gameserver-Hosting, Netzwerkdienste und Infrastrukturdiagnose.
+description: Chooses the most reliable route for an infrastructure task - Proxmox API, qm and pct, SSH and Bash, Docker, Pterodactyl API, Ansible, or OpenTofu - and knows the actual state of this environment. Use for Linux servers, VMs, containers, game server hosting, network services, and infrastructure diagnostics.
 allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
 
-# Infrastrukturaufgaben richtig routen
+# Routing infrastructure tasks correctly
 
-## Tatsächlicher Ausbaustand — Stand 2026-08-21
+## Actual state of the environment — as of 2026-08-21
 
-Gemessen, nicht angenommen:
+Measured, not assumed:
 
-- **Kein** eigener Proxmox-Host
-- **Kein** eigener Linux-Server
-- **Kein** SSH-Zugang — weder `~/.ssh` noch Schlüssel noch `known_hosts`
-- **Pterodactyl** existiert nur als Web-Panel eines Anbieters, keine eigene
-  Installation, kein Wings-Zugriff
-- Docker Desktop 29.7.2 installiert, **Engine gestoppt**, WSL-Distro
+- **No** own Proxmox host
+- **No** own Linux server
+- **No** SSH access — neither `~/.ssh` nor keys nor `known_hosts`
+- **Pterodactyl** exists only as a provider's web panel, no own
+  installation, no Wings access
+- Docker Desktop 29.7.2 installed, **engine stopped**, WSL distro
   `docker-desktop` Stopped
 
-Erfinde keine Hosts, keine IPs und keine Zugangsdaten. Ist ein Ziel nicht
-erreichbar oder nicht konfiguriert, melde das — das ist ein Ergebnis, keine
-Blockade.
+Don't invent hosts, IPs, or credentials. If a target is unreachable or not
+configured, report that — it's a result, not a blocker.
 
-## Methodenwahl
+## Choosing a method
 
-**Proxmox:** API → `qm`/`pct` → SSH → Playwright → Computer Use.
-Die API ist strukturiert und verifizierbar; die WebUI ist es nicht.
+**Proxmox:** API → `qm`/`pct` → SSH → Playwright → computer use.
+The API is structured and verifiable; the web UI is not.
 
-**Linux allgemein:** SSH mit Bash, `systemctl`, `journalctl`, Paketmanager,
-Docker, Git, `curl`, `ss`/`netstat`, direkte Dateiverwaltung. Keine GUI, wenn
-die CLI zuverlässiger ist.
+**Linux in general:** SSH with Bash, `systemctl`, `journalctl`, package
+manager, Docker, Git, `curl`, `ss`/`netstat`, direct file management. No GUI
+when the CLI is more reliable.
 
-**Pterodactyl:** API → SSH/Wings → Dateien und CLI → Playwright → Computer Use.
+**Pterodactyl:** API → SSH/Wings → files and CLI → Playwright → computer use.
 
-**Konfigurationsmanagement:** Ansible für reproduzierbare, idempotente
-Serverkonfiguration. Der Control Node gehört auf **Linux**, nicht auf Windows.
-Solange kein Linux-Host existiert, ist Ansible kein verfügbarer Weg.
+**Configuration management:** Ansible for reproducible, idempotent server
+configuration. The control node belongs on **Linux**, not Windows. As long
+as no Linux host exists, Ansible is not an available route.
 
-**Infrastructure as Code:** OpenTofu nur, wenn es echten Vorteil bringt — nicht
-für jede kleine VM-Änderung. Bei Nutzung: `fmt` → `validate` → `plan` → Plan
-tatsächlich lesen → `apply` → objektive Verifikation.
+**Infrastructure as code:** OpenTofu only when it brings real benefit — not
+for every small VM change. When used: `fmt` → `validate` → `plan` → actually
+read the plan → `apply` → objective verification.
 
-## Schichten trennen
+## Separate the layers
 
-Host, Hypervisor, Container, Anwendung, Gameserver, Netzwerk. Ein Fehler in
-einer Schicht wird nicht in einer anderen repariert. Bestimme immer zuerst, in
-welcher Schicht das Problem tatsächlich sitzt.
+Host, hypervisor, container, application, game server, network. A fault in
+one layer is not fixed in another. Always determine first which layer the
+problem actually sits in.
 
-Die spielspezifische Ebene — Mods, Plugins, Eggs, Startparameter, Welten —
-gehört dem `gaming-agent`, nicht hierher.
+The game-specific layer — mods, plugins, eggs, startup parameters, worlds —
+belongs to the `gaming-agent`, not here.
 
-## Vor Änderungen validieren
+## Validate before changes
 
-Konfiguration wird **vor** Reload oder Restart geprüft:
+Configuration is checked **before** reload or restart:
 `nginx -t` · `sshd -t` · `docker compose config` · `visudo -c` ·
 `systemd-analyze verify` · `named-checkconf`
 
-Ein Neustart mit kaputter Konfiguration kostet den Zugang zum System.
+Restarting with a broken configuration costs access to the system.
 
-## Lockout-Risiko
+## Lockout risk
 
-Bei SSH-, Firewall- und Netzwerkänderungen an entfernten Hosts gilt immer:
-Kann diese Änderung mich aussperren? Wenn ja, brauchst du vorher einen
-Out-of-Band-Zugang (Konsole des Hypervisors, IPMI, Anbieter-Panel) oder eine
-zeitgesteuerte Rücknahme.
+For SSH, firewall, and network changes on remote hosts, always ask: could
+this change lock me out? If so, you need an out-of-band access path first
+(hypervisor console, IPMI, provider panel) or a timed rollback.
 
-Ein `iptables -F` oder eine geänderte `sshd_config` ohne zweiten Zugangsweg ist
+An `iptables -F` or a changed `sshd_config` without a second access path is
 **R3**.
 
-## Risikoklassen
+## Risk classes
 
-| Aufgabe | Klasse |
+| Task | Class |
 |---|---|
-| Inventar, Status, Logs, `qm list`, API-GET | R0 |
-| Dienst neu starten, Container neu starten | R1 |
-| Pakete, Firewall, VM-Ressourcen, Netzwerk, Compose-Änderung, Storage-Erweiterung | R2 |
-| VM-/Container-Löschung, Datenträger, Datenbank-Löschung, Datenmigration, WAN/Firewall mit Lockout-Risiko | R3 |
+| Inventory, status, logs, `qm list`, API GET | R0 |
+| Restart a service, restart a container | R1 |
+| Packages, firewall, VM resources, network, compose changes, storage expansion | R2 |
+| VM/container deletion, disk deletion, database deletion, data migration, WAN/firewall with lockout risk | R3 |
 
-Ab R2 zuerst `preflight-change` mit Snapshot oder Backup, danach
+From R2 up, run `preflight-change` first with a snapshot or backup, then
 `verify-change`.
 
-## Verifikation
+## Verification
 
-Health, Konnektivität, Persistenz **über einen Neustart hinweg**, und die
-relevanten Logs seit dem Änderungszeitpunkt.
+Health, connectivity, persistence **across a restart**, and the relevant
+logs since the time of the change.
 
-Für Pterodactyl konkret: Serverobjekt vorhanden · Node korrekt · Allocation
-korrekt · Wings erreichbar · Container läuft · Ports offen · Limits gesetzt ·
-Startup-Log ohne kritische Fehler · **der Gameserver antwortet tatsächlich**.
+Specifically for Pterodactyl: server object present · node correct ·
+allocation correct · Wings reachable · container running · ports open ·
+limits set · startup log free of critical errors · **the game server
+actually responds**.
 
-„Container läuft" ist kein Nachweis, dass der Dienst funktioniert.
+"Container is running" is not proof that the service works.
 
-## Erfahrung
+## Experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key infra.<aufgabenart>
-python C:\AgentSystem\bin\agentctl.py exp record --key infra.<aufgabenart> --method "proxmox-api:<endpunkt>" --success --duration <ms>
+python C:\AgentSystem\bin\agentctl.py exp best --key infra.<task-type>
+python C:\AgentSystem\bin\agentctl.py exp record --key infra.<task-type> --method "proxmox-api:<endpoint>" --success --duration <ms>
 ```

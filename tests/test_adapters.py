@@ -1,18 +1,18 @@
-"""Adaptertests für UFO² und Playwright.
+"""Adapter tests for UFO² and Playwright.
 
-Prüft beide Adapter gegen die real laufende Umgebung. Alle Prüfungen sind
-**lesend** — es wird nichts angeklickt, nichts eingegeben und nirgends
-angemeldet, damit der Lauf jederzeit gefahrlos wiederholbar ist.
+Checks both adapters against the real running environment. All checks are
+**read-only** — nothing is clicked, nothing is entered, and nowhere is
+signed in, so the run stays safely repeatable at any time.
 
-Die schreibenden Ketten wurden beim Aufbau je einmal nachgewiesen und in
-`docs/known-issues.md` dokumentiert:
+The writing chains were each demonstrated once during setup and documented
+in `docs/known-issues.md`:
 
-* UFO: `type` in das Suchfeld der Windows-Einstellungen, anschließend über
-  `inspect` unabhängig bestätigt und wieder geleert.
-* Playwright: `fill` mit Rücklesen gegen eine lokal erzeugte Seite.
+* UFO: `type` into the search field of the Windows settings, then
+  independently confirmed via `inspect` and cleared again.
+* Playwright: `fill` with read-back against a locally generated page.
 
-Beide gehören wegen ihrer Sichtbarkeit beziehungsweise Zustandsänderung nicht
-in einen Routinelauf.
+Both are excluded from a routine run due to their visibility and/or state
+change respectively.
 
     python C:\\AgentSystem\\tests\\test_adapters.py
 """
@@ -26,13 +26,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 UFOCTL = ROOT / "adapters" / "ufo" / "ufoctl.py"
 UFO_PYTHON = Path(r"C:\UFO\.venv\Scripts\python.exe")
 PWCTL = ROOT / "adapters" / "playwright" / "pwctl.mjs"
 
-# Der lokale Router ist ein stabiles, erreichbares Ziel ohne externe
-# Abhängigkeit und ohne Anmeldung. IP an die eigene Umgebung anpassen.
+# The local router is a stable, reachable target without external
+# dependency and without login. Adjust the IP to your own environment.
 LOCAL_HTTP_TARGET = "http://192.0.2.1/"
 
 FAILURES: list[str] = []
@@ -71,75 +71,75 @@ def pwctl(*args: str, timeout: int = 240) -> tuple[int, dict | None, str]:
 
 
 def run_ufo_tests() -> None:
-    # Werkzeugliste: der Shell-Executor darf nicht erreichbar sein.
+    # Tool list: the shell executor must not be reachable.
     code, payload, stderr = ufoctl("tools")
-    check(code == 0, f"ufoctl tools endete mit {code}: {stderr}")
+    check(code == 0, f"ufoctl tools ended with {code}: {stderr}")
     if payload:
         tools = payload.get("tools", [])
-        check(bool(tools), "ufoctl tools liefert keine Werkzeuge")
+        check(bool(tools), "ufoctl tools returns no tools")
         shell_tools = [t for t in tools
                        if "command" in t.lower() or "shell" in t.lower()]
         check(not shell_tools,
-              f"Shell-Executor darf nicht exponiert sein, gefunden: {shell_tools}")
+              f"Shell executor must not be exposed, found: {shell_tools}")
         check("CommandLineExecutor" in payload.get("excluded", []),
-              "CommandLineExecutor muss ausdrücklich ausgeschlossen sein")
+              "CommandLineExecutor must be explicitly excluded")
         for required in ("ui_get_desktop_app_info", "ui_get_app_window_controls_info",
                          "host_select_application_window", "app_click_input",
                          "app_set_edit_text"):
-            check(required in tools, f"Werkzeug fehlt: {required}")
+            check(required in tools, f"Tool missing: {required}")
 
-    # Der Lesemodus darf keine Mutationswerkzeuge führen.
+    # Read-only mode must not carry any mutating tools.
     code, payload, _ = ufoctl("tools", "--read-only")
     if payload:
         mutating = [t for t in payload.get("tools", []) if t.startswith("app_")]
         check(not mutating,
-              f"Lesemodus darf keine app_-Werkzeuge führen: {mutating}")
+              f"Read-only mode must not carry any app_ tools: {mutating}")
 
-    # Fenster auflisten.
+    # List windows.
     code, payload, stderr = ufoctl("windows")
-    check(code == 0, f"ufoctl windows endete mit {code}: {stderr}")
+    check(code == 0, f"ufoctl windows ended with {code}: {stderr}")
     windows = (payload or {}).get("windows", [])
     if code == 0 and not windows:
-        # In nichtinteraktiven Desktop-/Sandbox-Sitzungen kann UFO korrekt
-        # starten, aber keinen sichtbaren Benutzerdesktop erreichen. Das ist
-        # eine fehlende Testvoraussetzung, kein Adapterregressionsbeweis.
+        # In non-interactive desktop/sandbox sessions, UFO can start
+        # correctly but fail to reach a visible user desktop. That is
+        # a missing test precondition, not proof of adapter regression.
         SKIPPED.append("Kein interaktives Fenster fuer UFO-Lesetests verfuegbar")
         return
     for window in windows:
         check("id" in window and "name" in window,
-              f"Fenstereintrag unvollständig: {window}")
+              f"Window entry incomplete: {window}")
     if not windows:
         return
 
-    # Steuerelemente eines real offenen Fensters lesen. Über die ID, nicht
-    # über den Namen: Namen ändern sich, IDs sind für den Aufruf stabil.
+    # Read controls of a real open window. Via the ID, not the name:
+    # names change, IDs are stable for the call.
     code, payload, stderr = ufoctl("controls", "--window", str(windows[0]["id"]))
-    check(code == 0, f"ufoctl controls endete mit {code}: {stderr}")
+    check(code == 0, f"ufoctl controls ended with {code}: {stderr}")
     for control in (payload or {}).get("controls", [])[:5]:
-        check("label" in control, f"Steuerelement ohne label: {control}")
-        check("control_type" in control, f"Steuerelement ohne Typ: {control}")
+        check("label" in control, f"Control without label: {control}")
+        check("control_type" in control, f"Control without type: {control}")
 
-    # Unabhängige Prüfung geht an UFO vorbei. Die Fensterliste wird frisch
-    # geholt: zwischen zwei Aufrufen kann sich der Desktop geändert haben.
+    # Independent check bypasses UFO. The window list is fetched fresh:
+    # the desktop may have changed between two calls.
     _, fresh, _ = ufoctl("windows")
     current = (fresh or {}).get("windows", [])
     if not current:
-        SKIPPED.append("Kein Fenster für die inspect-Prüfung offen")
+        SKIPPED.append("No window open for the inspect check")
     else:
         code, payload, stderr = ufoctl(
             "inspect", "--window", current[0]["name"], "--limit", "5")
-        check(code == 0, "ufoctl inspect endete mit "
+        check(code == 0, "ufoctl inspect ended with "
                          f"{code}: {(payload or {}).get('error', stderr)}")
         check(payload is not None and "matches" in payload,
-              "inspect liefert keine matches-Struktur")
+              "inspect returns no matches structure")
 
-    # Fehlerfälle werden benannt, nicht geraten.
+    # Error cases are named, not guessed.
     code, payload, _ = ufoctl("controls", "--window", "gibtesnichtxyz123")
-    check(code == 1, "Unbekanntes Fenster muss mit Exit 1 enden")
+    check(code == 1, "Unknown window must end with exit 1")
     check((payload or {}).get("status") == "FAILED",
-          "Unbekanntes Fenster muss status FAILED melden")
-    check("Kein Fenster passt" in (payload or {}).get("error", ""),
-          "Fehlermeldung muss die offenen Fenster nennen")
+          "Unknown window must report status FAILED")
+    check("No window matches" in (payload or {}).get("error", ""),
+          "Error message must name the open windows")
 
 
 # --------------------------------------------------------------------------
@@ -149,15 +149,15 @@ def run_ufo_tests() -> None:
 
 def run_playwright_tests() -> None:
     code, payload, stderr = pwctl("help")
-    check(code == 0, f"pwctl help endete mit {code}: {stderr}")
+    check(code == 0, f"pwctl help ended with {code}: {stderr}")
     commands = (payload or {}).get("commands", [])
     for required in ("snapshot", "text", "http", "click", "fill", "plan"):
-        check(required in commands, f"pwctl-Befehl fehlt: {required}")
+        check(required in commands, f"pwctl command missing: {required}")
 
     code, _, _ = pwctl("http")
-    check(code == 1, "Aufruf ohne --url muss mit Exit 1 enden")
+    check(code == 1, "Call without --url must end with exit 1")
 
-    # Browser startet und liefert eine echte, verifizierbare HTTP-Antwort.
+    # Browser starts and returns a real, verifiable HTTP response.
     code, payload, stderr = pwctl("http", "--url", LOCAL_HTTP_TARGET)
     if code != 0:
         SKIPPED.append("Lokales HTTP-Ziel nicht erreichbar: "
@@ -165,24 +165,24 @@ def run_playwright_tests() -> None:
         return
     response = (payload or {}).get("response", {})
     check(response.get("status") == 200,
-          f"Erwartet HTTP 200, war {response.get('status')}")
-    check(bool((payload or {}).get("title")), "Seitentitel fehlt")
+          f"Expected HTTP 200, got {response.get('status')}")
+    check(bool((payload or {}).get("title")), "Page title missing")
 
-    # Accessibility-Snapshot liefert Struktur statt Pixel. Ohne networkidle
-    # bleibt eine JavaScript-Oberfläche leer - das ist der eigentliche Test.
+    # Accessibility snapshot provides structure instead of pixels. Without
+    # networkidle a JavaScript interface stays empty - that's the actual test.
     code, payload, stderr = pwctl("snapshot", "--url", LOCAL_HTTP_TARGET,
                                   "--wait", "networkidle", "--timeout", "30000")
-    check(code == 0, f"pwctl snapshot endete mit {code}: {stderr}")
+    check(code == 0, f"pwctl snapshot ended with {code}: {stderr}")
     aria = (payload or {}).get("aria", "")
     check("link" in aria or "button" in aria,
-          "Snapshot enthält keine bedienbaren Rollen — JS-Aufbau nicht abgewartet?")
+          "Snapshot contains no operable roles — JS build not awaited?")
 
-    # Ein Klick ohne Lokalisierer wird abgelehnt, statt aufs Geratewohl das
-    # erste Element zu treffen.
+    # A click without a locator is rejected instead of hitting the first
+    # element by guesswork.
     code, payload, _ = pwctl("click", "--url", LOCAL_HTTP_TARGET)
-    check(code == 1, "Klick ohne Lokalisierer muss mit Exit 1 enden")
+    check(code == 1, "Click without locator must end with exit 1")
     check("Lokalisierer" in (payload or {}).get("error", ""),
-          "Fehlermeldung muss den fehlenden Lokalisierer benennen")
+          "Error message must name the missing locator")
 
 
 

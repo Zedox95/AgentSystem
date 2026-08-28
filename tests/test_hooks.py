@@ -1,7 +1,7 @@
-"""Hook-Tests: die Hooks werden als echte Prozesse mit JSON auf stdin aufgerufen.
+"""Hook tests: the hooks are invoked as real processes with JSON on stdin.
 
-Das prüft, was im Betrieb tatsächlich passiert - nicht nur die Bibliothek
-dahinter. Aufruf:
+This checks what actually happens at runtime - not just the library
+behind it. Invocation:
 
     python C:\\AgentSystem\\tests\\test_hooks.py
 """
@@ -15,7 +15,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 HOOKS = ROOT / ".claude" / "hooks"
 
 _TMP = tempfile.mkdtemp(prefix="agentsys-hooktest-")
@@ -63,7 +63,7 @@ cases = [
     ("Bash", "winget install Foo.Bar", "escalate"),
     ("Bash", "git status", "allow"),
     ("PowerShell", "Get-Service", "allow"),
-    ("Bash", "echo hallo && python build.py", None),          # keine Regel -> keine Antwort
+    ("Bash", "echo hallo && python build.py", None),          # no rule -> no response
 ]
 for tool, command, expected in cases:
     code, out, _ = run_hook("policy_guard.py", {
@@ -71,26 +71,28 @@ for tool, command, expected in cases:
         "tool_input": {"command": command}, "tool_use_id": "t1",
     })
     got = decision_of(out)
-    check(code == 0, f"policy_guard sollte mit 0 enden bei {command!r}, war {code}")
+    check(code == 0, f"policy_guard should end with 0 for {command!r}, was {code}")
     check(got == expected,
-          f"policy_guard: {command!r} -> erwartet {expected}, war {got}")
+          f"policy_guard: {command!r} -> expected {expected}, was {got}")
 
-# Control-Plane-Schutz über den Hook
+# Control plane protection via the hook. The hook's own AGENTSYSTEM_ROOT is
+# redirected to _TMP for isolation (see run_hook), so the path under test
+# must be _TMP's control plane, not this test file's own repo root.
 code, out, _ = run_hook("policy_guard.py", {
     "tool_name": "Write",
-    "tool_input": {"file_path": str(ROOT / ".claude" / "settings.json")},
+    "tool_input": {"file_path": str(Path(_TMP) / ".claude" / "settings.json")},
 })
-check(decision_of(out) == "escalate", "Schreiben an settings.json muss escalate ergeben")
+check(decision_of(out) == "escalate", "Writing to settings.json must yield escalate")
 
-# Direkte Vault-Schreibzugriffe umgehen den verpflichtenden Candidate-/Archivist-
-# Pfad und müssen unabhängig von Claude-Berechtigungen blockiert werden.
+# Direct vault writes bypass the mandatory candidate/archivist path and
+# must be blocked independently of Claude permissions.
 code, out, _ = run_hook("policy_guard.py", {
     "tool_name": "Write",
     "tool_input": {
         "file_path": str(Path.home() / "Documents" / "Obsidian Vault" / "03 Bereiche" / "test.md")
     },
 })
-check(decision_of(out) == "deny", "Direktes Schreiben in den Vault muss deny ergeben")
+check(decision_of(out) == "deny", "Direct write into the vault must yield deny")
 
 # --------------------------------------------------------------------------
 # readonly_guard (verification-agent)
@@ -113,7 +115,7 @@ for command, expected in readonly_cases:
     })
     got = decision_of(out)
     check(got == expected,
-          f"readonly_guard: {command!r} -> erwartet {expected}, war {got}")
+          f"readonly_guard: {command!r} -> expected {expected}, was {got}")
 
 # --------------------------------------------------------------------------
 # permission_request
@@ -121,46 +123,46 @@ for command, expected in readonly_cases:
 code, out, _ = run_hook("permission_request.py", {
     "tool_name": "Bash", "tool_input": {"command": "git status"},
 })
-check(decision_of(out) == "allow", "PermissionRequest muss git status erlauben")
+check(decision_of(out) == "allow", "PermissionRequest must allow git status")
 
 code, out, _ = run_hook("permission_request.py", {
     "tool_name": "PowerShell", "tool_input": {"command": "Stop-Service -Name Spooler"},
 })
-check(decision_of(out) == "ask", "PermissionRequest muss Stop-Service nachfragen")
+check(decision_of(out) == "ask", "PermissionRequest must ask for Stop-Service")
 
 code, out, _ = run_hook("permission_request.py", {
     "tool_name": "Bash", "tool_input": {"command": "qm destroy 103"},
 })
-check(decision_of(out) == "deny", "PermissionRequest muss qm destroy verweigern")
+check(decision_of(out) == "deny", "PermissionRequest must deny qm destroy")
 
 # --------------------------------------------------------------------------
 # subagent_stop
 # --------------------------------------------------------------------------
 code, _, err = run_hook("subagent_stop.py", {
     "agent_type": "verification-agent",
-    "last_assistant_message": "Alles erledigt, hat funktioniert.",
+    "last_assistant_message": "All done, it worked.",
 })
-check(code == 2, f"Ergebnis ohne Struktur muss blockieren (Exit 2), war {code}")
-check("AGENTS.md" in err, "Blockmeldung muss auf das Format verweisen")
+check(code == 2, f"Result without structure must block (exit 2), was {code}")
+check("AGENTS.md" in err, "Block message must reference the format")
 
-good = ("STATUS: PASS\nEVIDENCE: Get-Service gab Running zurück\n"
-        "CHANGES: keine\nTESTS: Dienststatus erneut gelesen\n"
-        "RISKS: keine\nNEXT_ACTION: abschließen")
+good = ("STATUS: PASS\nEVIDENCE: Get-Service returned Running\n"
+        "CHANGES: none\nTESTS: service status read back\n"
+        "RISKS: none\nNEXT_ACTION: close out")
 code, _, _ = run_hook("subagent_stop.py", {
     "agent_type": "verification-agent", "last_assistant_message": good,
 })
-check(code == 0, f"Vollständiges Ergebnis darf nicht blockieren, war {code}")
+check(code == 0, f"Complete result must not block, was {code}")
 
 bad_status = good.replace("STATUS: PASS", "STATUS: ERLEDIGT")
 code, _, err = run_hook("subagent_stop.py", {
     "agent_type": "verification-agent", "last_assistant_message": bad_status,
 })
-check(code == 2, "Unzulässiger STATUS-Wert muss blockieren")
+check(code == 2, "Invalid STATUS value must block")
 
 code, _, _ = run_hook("subagent_stop.py", {
     "agent_type": "Explore", "last_assistant_message": "irgendwas",
 })
-check(code == 0, "Fremde Agenten dürfen nicht blockiert werden")
+check(code == 0, "Unrelated agents must not be blocked")
 
 # --------------------------------------------------------------------------
 # config_guard
@@ -168,21 +170,21 @@ check(code == 0, "Fremde Agenten dürfen nicht blockiert werden")
 code, _, err = run_hook("config_guard.py", {
     "config_source": "project_settings", "config_key": "hooks", "new_value": "{}",
 })
-check(code == 2, f"Änderung an hooks muss blockieren, war {code}")
+check(code == 2, f"Change to hooks must block, was {code}")
 
 code, _, _ = run_hook("config_guard.py", {
     "config_source": "project_settings", "config_key": "outputStyle",
     "new_value": "explanatory",
 })
-check(code == 0, "Unkritische Einstellung darf nicht blockieren")
+check(code == 0, "Non-critical setting must not block")
 
 code, _, _ = run_hook("config_guard.py", {
     "config_source": "policy_settings", "config_key": "permissions", "new_value": "{}",
 })
-check(code == 0, "policy_settings ist laut Dokumentation nicht blockierbar")
+check(code == 0, "policy_settings is not blockable per the documentation")
 
 # --------------------------------------------------------------------------
-# tool_failure — zweiter identischer Fehler muss warnen
+# tool_failure — a second identical failure must warn
 # --------------------------------------------------------------------------
 failure_payload = {
     "session_id": "test", "tool_name": "Bash",
@@ -190,19 +192,19 @@ failure_payload = {
     "error": "Failed to restart nginx.service: Unit not found",
 }
 code_first, _, _ = run_hook("tool_failure.py", failure_payload)
-check(code_first == 0, f"Erster Fehler darf nicht warnen, war {code_first}")
+check(code_first == 0, f"First failure must not warn, was {code_first}")
 code_second, _, err_second = run_hook("tool_failure.py", failure_payload)
-check(code_second == 2, f"Zweiter identischer Fehler muss warnen, war {code_second}")
-check("Retry Budget" in err_second, "Warnung muss das Retry Budget nennen")
+check(code_second == 2, f"Second identical failure must warn, was {code_second}")
+check("Retry Budget" in err_second, "Warning must name the retry budget")
 
-# Ein anderer Fehler darf nicht als Wiederholung zählen.
+# A different failure must not count as a repeat.
 code_other, _, _ = run_hook("tool_failure.py", {
     **failure_payload, "error": "Permission denied while opening socket"
 })
-check(code_other == 0, "Abweichender Fehler darf nicht als Wiederholung gelten")
+check(code_other == 0, "A different failure must not count as a repeat")
 
 # --------------------------------------------------------------------------
-# task_completed — offener R3-Vorgang blockiert den Abschluss
+# task_completed — an open R3 task blocks completion
 # --------------------------------------------------------------------------
 sys.path.insert(0, str(ROOT / "bin"))
 os.environ["AGENTSYSTEM_ROOT"] = _TMP
@@ -217,54 +219,54 @@ ledger.set_state(r3, "BACKED_UP")
 ledger.set_state(r3, "EXECUTING")
 
 code, _, err = run_hook("task_completed.py", {"task_id": "cc-1", "task_status": "completed"})
-check(code == 2, f"Offener R3-Vorgang muss den Abschluss blockieren, war {code}")
-check("R3" in err, "Blockmeldung muss den R3-Vorgang benennen")
+check(code == 2, f"Open R3 task must block completion, was {code}")
+check("R3" in err, "Block message must name the R3 task")
 
 ledger.set_state(r3, "ROLLING_BACK")
 ledger.set_state(r3, "ROLLED_BACK")
 code, _, _ = run_hook("task_completed.py", {"task_id": "cc-1", "task_status": "completed"})
-check(code == 0, "Nach Rollback darf nicht mehr blockiert werden")
+check(code == 0, "Must no longer block after rollback")
 
-# Auch R1 darf erst nach einem vollständig belegten Gate abgeschlossen werden.
+# R1 too may only be completed after a fully evidenced gate.
 r1 = ledger.create_task(
-    "R1-Commit-Gate", "R1", target_resource="test:r1",
-    desired_state="Verifiziert abgeschlossen",
-    planned_method="Isolierter Hook-Test",
-    alternative_method="Test verwerfen",
-    acceptance_criteria="TaskCompleted lässt erst den commit-bereiten Task passieren",
-    rollback_plan="Temp-Verzeichnis entfernen",
+    "R1 commit gate", "R1", target_resource="test:r1",
+    desired_state="Verified and completed",
+    planned_method="Isolated hook test",
+    alternative_method="Discard the test",
+    acceptance_criteria="TaskCompleted only lets a commit-ready task pass",
+    rollback_plan="Remove the temp directory",
 )
 for state in (
     "PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP",
     "EXECUTING", "OBJECTIVE_TEST", "INDEPENDENT_VERIFY",
 ):
     ledger.set_state(r1, state)
-r1_run = ledger.start_run(r1, "test", "Python", "Hook-Gate prüfen", "R1")
+r1_run = ledger.start_run(r1, "test", "Python", "Check hook gate", "R1")
 ledger.finish_run(
-    r1_run, "PASS", change_summary="Hook-Testzustand erzeugt",
-    objective_tests="TaskCompleted vor und nach Review ausgeführt",
-    verification="PASS: deterministischer Hook-Test",
+    r1_run, "PASS", change_summary="Created hook test state",
+    objective_tests="TaskCompleted run before and after review",
+    verification="PASS: deterministic hook test",
 )
 code, _, err = run_hook("task_completed.py", {"task_id": "cc-r1", "task_status": "completed"})
 check(code == 2 and "Knowledge Review" in err,
-      "R1 ohne Knowledge Review muss der Hook blockieren")
+      "R1 without knowledge review must be blocked by the hook")
 knowledge.review_task(
     r1, decision="none", reason="Isolierter Test erzeugt kein produktives Wissen",
 )
 code, _, _ = run_hook("task_completed.py", {"task_id": "cc-r1", "task_status": "completed"})
-check(code == 0, "Commit-bereiter R1 muss den Hook passieren")
+check(code == 0, "A commit-ready R1 must pass the hook")
 ledger.set_state(r1, "COMMITTED")
 
 # --------------------------------------------------------------------------
-# session_start — Kontext bei offenem Task
+# session_start — context for an open task
 # --------------------------------------------------------------------------
 open_task = ledger.create_task("Offener Testvorgang", "R2")
 for state in ("PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP", "EXECUTING"):
     ledger.set_state(open_task, state)
 code, out, _ = run_hook("session_start.py", {"hook_event_name": "SessionStart"})
-check(code == 0, "session_start darf nie blockieren")
+check(code == 0, "session_start must never block")
 context = json.loads(out).get("hookSpecificOutput", {}).get("additionalContext", "") if out.strip() else ""
-check(open_task in context, "Offener Task muss im SessionStart-Kontext auftauchen")
+check(open_task in context, "Open task must appear in the SessionStart context")
 
 # --------------------------------------------------------------------------
 print(json.dumps({

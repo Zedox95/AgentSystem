@@ -1,113 +1,114 @@
 ---
 name: ufo-windows
-description: Bedient die Windows-Oberfläche über UFO² per Kommandozeile - Fenster auflisten, Steuerelemente auslesen, klicken, Text eingeben, Tasten senden, scrollen, Schrittfolgen ausführen - und verifiziert jede Aktion unabhängig über die UI-Automation-Schnittstelle. Einsetzen, wenn eine Windows-Aufgabe tatsächlich eine grafische Oberfläche erfordert und keine API, kein Cmdlet und keine CLI sie zuverlässiger löst.
+description: Operates the Windows UI via UFO² through the command line - list windows, read controls, click, type text, send keys, scroll, run step sequences - and independently verifies every action via the UI Automation interface. Use when a Windows task genuinely requires a graphical interface and no API, cmdlet, or CLI can solve it more reliably.
 allowed-tools: Bash(C:\UFO\.venv\Scripts\python.exe C:\AgentSystem\adapters\ufo\ufoctl.py *), Read, Grep, Glob
 ---
 
-# Windows-GUI über UFO²
+# Windows GUI via UFO²
 
-Claude ist das Gehirn, UFO² nur die Hand. UFOs eigene Agentenschleife wird
-nicht benutzt — sie braucht ein Sprachmodell, das dieses System bewusst nicht
-vorhält.
+Claude is the brain, UFO² is only the hand. UFO's own agent loop is not
+used — it needs a language model that this system deliberately doesn't
+provide for it.
 
-## CLI oder MCP?
+## CLI or MCP?
 
-Beide Wege existieren nebeneinander und lösen verschiedene Aufgaben.
+Both paths exist side by side and solve different tasks.
 
-**`ufoctl` (dieser Skill) — der Normalfall.** Für bekannte, wiederholbare
-Abläufe. Jeder Aufruf ist in sich geschlossen, deterministisch skriptbar,
-einzeln verifizierbar, mit kleiner Kontextausgabe und ohne laufenden Prozess.
+**`ufoctl` (this skill) — the default.** For known, repeatable workflows.
+Every call is self-contained, deterministically scriptable, individually
+verifiable, with small context output and no running process.
 
-**MCP-Server `ufo` — für exploratives Arbeiten.** Wenn du dich erst durch eine
-unbekannte Anwendung tasten musst, hält der Server den Fensterzustand über
-viele Schritte hinweg, statt ihn bei jedem Aufruf neu aufzubauen. Werkzeuge:
-`mcp__ufo__ui_*` zum Lesen, `mcp__ufo__host_select_application_window` zum
-Aktivieren, `mcp__ufo__app_*` zum Handeln.
+**MCP server `ufo` — for exploratory work.** When you need to feel your way
+through an unknown application, the server holds window state across many
+steps instead of rebuilding it on every call. Tools: `mcp__ufo__ui_*` for
+reading, `mcp__ufo__host_select_application_window` for activating,
+`mcp__ufo__app_*` for acting.
 
-Faustregel: **Erkunden über MCP, wiederholen über die CLI.** Was du im MCP-Modus
-herausgefunden hast, gehört anschliessend als `plan`-Datei oder Skript in die
-CLI — dann ist es reproduzierbar.
+Rule of thumb: **explore via MCP, repeat via the CLI.** Whatever you
+discovered in MCP mode should then go into a `plan` file or script for the
+CLI — that's when it becomes reproducible.
 
-Auch im MCP-Modus gilt: **verifiziert wird mit `ufoctl inspect`**, nie mit UFOs
-eigener Steuerelementliste.
+Even in MCP mode: **verification is done with `ufoctl inspect`**, never with
+UFO's own control list.
 
-## Zuerst: Ist die GUI wirklich nötig?
+## First: is a GUI actually necessary?
 
-Prüfe in dieser Reihenfolge, bevor du UFO anfasst: CIM/WMI → PowerShell-Cmdlet
-→ COM → Registry oder Konfigurationsdatei. Eine GUI-Aktion ist langsamer,
-brüchiger und schlechter verifizierbar als jede dieser Ebenen.
+Check in this order before touching UFO: CIM/WMI → PowerShell cmdlet → COM →
+registry or configuration file. A GUI action is slower, more fragile, and
+worse to verify than any of these layers.
 
-UFO ist **keine** Abkürzung um Rechte, Dateisystem oder eine fehlende API.
+UFO is **not** a shortcut around permissions, the filesystem, or a missing
+API.
 
-## Aufruf
+## Invocation
 
 ```bash
 C:\UFO\.venv\Scripts\python.exe C:\AgentSystem\adapters\ufo\ufoctl.py windows
 ```
 
-Jeder Aufruf ist in sich geschlossen: Fenster auflösen, auswählen, handeln,
-zurücklesen. UFOs Fensterauswahl lebt nur im Prozess — eine Auswahl aus einem
-früheren Aufruf existiert nicht.
+Every call is self-contained: resolve window, select, act, read back. UFO's
+window selection lives only within the process — a selection from an
+earlier call doesn't exist.
 
-## Ablauf
+## Workflow
 
-**1. Fenster finden.**
+**1. Find the window.**
 
 ```bash
 … ufoctl.py windows
 ```
 
-**2. Steuerelemente auslesen — immer vor jeder Aktion.**
+**2. Read the controls — always before any action.**
 
 ```bash
-… ufoctl.py controls --window "Einstellungen" --type Edit
-… ufoctl.py controls --window "Editor" --contains "Speichern"
+… ufoctl.py controls --window "Settings" --type Edit
+… ufoctl.py controls --window "Editor" --contains "Save"
 ```
 
-Das liefert je Element `label`, `control_text` und `control_type`. Das `label`
-ist die Kennung, mit der du handelst. Ohne diesen Schritt kennt UFO die
-Elemente nicht und jede Aktion scheitert.
+This returns `label`, `control_text`, and `control_type` for each element.
+The `label` is the identifier you act on. Without this step, UFO doesn't
+know the elements and every action fails.
 
-**3. Handeln — über das Label, nicht über Koordinaten.**
+**3. Act — via the label, not coordinates.**
 
 ```bash
 … ufoctl.py click  --window "Editor" --control 12
-… ufoctl.py type   --window "Editor" --control 6 --text "Inhalt"
+… ufoctl.py type   --window "Editor" --control 6 --text "content"
 … ufoctl.py keys   --window "Editor" --control 6 --keys "^s"
 … ufoctl.py scroll --window "Editor" --control 8 --dist -5
 ```
 
-`--control` akzeptiert das Label oder einen eindeutigen Textausschnitt. Ist der
-Ausschnitt mehrdeutig, meldet die CLI alle Treffer, statt zu raten.
+`--control` accepts the label or a unique text fragment. If the fragment is
+ambiguous, the CLI reports all matches instead of guessing.
 
-**4. Unabhängig verifizieren — der wichtigste Schritt.**
+**4. Verify independently — the most important step.**
 
 ```bash
-… ufoctl.py inspect --window "Einstellungen" --type Edit --expect "erwarteter Text"
+… ufoctl.py inspect --window "Settings" --type Edit --expect "expected text"
 ```
 
-`inspect` geht **an UFO vorbei** direkt über pywinauto an die
-UI-Automation-Schnittstelle und liefert `value` und `window_text` des lebenden
-Steuerelements.
+`inspect` goes **around UFO** directly through pywinauto to the UI
+Automation interface and returns the `value` and `window_text` of the live
+control.
 
-**Das ist zwingend.** UFOs eigene Steuerelementliste meldet bei Eingabefeldern
-den Accessible Name statt des tatsächlichen Inhalts und kann veraltete Werte
-liefern. Eine Aktion mit UFOs eigener Liste zu bestätigen wäre der Executor,
-der sich selbst beurteilt. Siehe `docs/known-issues.md`.
+**This is mandatory.** UFO's own control list reports the accessible name
+instead of the actual content for input fields and can return stale values.
+Confirming an action with UFO's own list would be the executor judging
+itself. See `docs/known-issues.md`.
 
-## Schrittfolgen
+## Step sequences
 
-Für wiederkehrende Abläufe eine Plandatei statt vieler Einzelaufrufe — ein
-Fensterkontext, eine Ausführung:
+For recurring workflows, use a plan file instead of many individual calls —
+one window context, one execution:
 
 ```json
 {
   "window": "Editor",
   "steps": [
-    {"action": "type",  "control": "Text-Editor", "text": "Inhalt"},
-    {"action": "keys",  "control": "Text-Editor", "keys": "^s"},
+    {"action": "type",  "control": "Text editor", "text": "content"},
+    {"action": "keys",  "control": "Text editor", "keys": "^s"},
     {"action": "wait",  "seconds": 1},
-    {"action": "read",  "control": "Text-Editor"}
+    {"action": "read",  "control": "Text editor"}
   ]
 }
 ```
@@ -116,33 +117,33 @@ Fensterkontext, eine Ausführung:
 … ufoctl.py plan --file plan.json
 ```
 
-Der Plan bricht beim ersten Fehlschlag ab und meldet, welche Schritte bereits
-liefen. Ein halb ausgeführter Plan gilt **nie** als Erfolg — prüfe danach den
-tatsächlichen Zustand und entscheide über Fortsetzung oder Rollback.
+The plan aborts on the first failure and reports which steps already ran. A
+partially executed plan is **never** counted as success — check the actual
+state afterward and decide on continuing or rolling back.
 
-## Risiko
+## Risk
 
-GUI-Aktionen sind mindestens **R1**. Sobald sie Konfiguration, Dateien oder
-Systemeinstellungen ändern, sind sie **R2** — dann zuerst `preflight-change`
-mit Baseline und Backup.
+GUI actions are at least **R1**. Once they change configuration, files, or
+system settings, they're **R2** — then run `preflight-change` first with a
+baseline and backup.
 
-Koordinatenbasierte Aktionen (`app_click_on_coordinates`,
-`app_drag_on_coordinates`) sind absichtlich nicht als CLI-Befehl exponiert.
-Sie sind nicht reproduzierbar und brechen bei jeder Layoutänderung.
+Coordinate-based actions (`app_click_on_coordinates`,
+`app_drag_on_coordinates`) are deliberately not exposed as a CLI command.
+They aren't reproducible and break with every layout change.
 
-## Fallstricke
+## Pitfalls
 
-- **Immer erst `controls`, dann handeln.** Sonst: „No application windows
+- **Always run `controls` before acting.** Otherwise: "No application windows
   available."
-- **Fenster mehrdeutig?** Die CLI nennt alle Treffer — nimm die ID.
-- **Leere Steuerelementliste?** Die CLI wartet und wiederholt begrenzt; das ist
-  ein bekanntes Rennen nach dem Fensterwechsel, keine blinde Wiederholung.
-- **Nie mit `controls` verifizieren, immer mit `inspect`.**
-- Das Auswählen eines Fensters bringt es in den Vordergrund. Auf einem
-  benutzten Rechner ist das sichtbar — plane GUI-Arbeit entsprechend.
+- **Window ambiguous?** The CLI lists all matches — use the ID.
+- **Empty control list?** The CLI waits and retries a limited number of
+  times; that's a known race after a window switch, not a blind retry.
+- **Never verify with `controls`, always with `inspect`.**
+- Selecting a window brings it to the foreground. On a machine that's in
+  use, that's visible — plan GUI work accordingly.
 
-## Erfahrung verbuchen
+## Recording experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp record --key windows.gui.<aufgabe> --method "ufoctl:<befehl>" --success --duration <ms> --agent windows-agent
+python C:\AgentSystem\bin\agentctl.py exp record --key windows.gui.<task> --method "ufoctl:<command>" --success --duration <ms> --agent windows-agent
 ```

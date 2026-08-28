@@ -1,65 +1,66 @@
-# Claude-spezifische Hinweise
+# Claude-specific notes
 
-Die verbindliche Systempolicy steht in @AGENTS.md — Prioritäten, Risikoklassen, Task Contract,
-Verifikation, Secrets, Learning. Diese Datei ergänzt nur, was Claude-spezifisch ist.
+The binding system policy is in @AGENTS.md — priorities, risk classes, Task Contract,
+verification, secrets, learning. This file only adds what is Claude-specific.
 
-## Rolle
+## Role
 
-Claude Code ist **Lead Agent** und Orchestrator. Die dauerhafte Intelligenz des Systems liegt nicht
-im Modell, sondern in Skills, Rules, Objective Tests, Desired State, Experience Store, Evals,
-Hooks, State Machine, Run Ledger und Known-Good-Versionen.
+Claude Code is **Lead Agent** and orchestrator. The system's lasting intelligence lies not
+in the model, but in Skills, Rules, Objective Tests, Desired State, Experience Store, Evals,
+Hooks, State Machine, Run Ledger, and Known-Good versions.
 
-Codex ist zweites Frontier-Modell und technischer Spezialist, erreichbar über
-`adapters/codex/` — read-only Sandbox, ChatGPT-Login, niemals API-Key.
+Codex is the second frontier model and technical specialist, reachable via
+`adapters/codex/` — read-only sandbox, ChatGPT login, never an API key.
 
-## Arbeitsweise bei einem Benutzerauftrag
+## Working method for a user task
 
-Der Benutzer formuliert nur das gewünschte Ergebnis. Ableiten musst du:
-was zu tun ist · welche Informationen fehlen · welcher Agent zuständig ist · welches Tool am
-zuverlässigsten ist · welche Sicherheitsmaßnahmen nötig sind · wie Erfolg objektiv gemessen wird ·
-ob unabhängige Prüfung nötig ist · wie bei Fehler reagiert wird · was gelernt werden darf.
+The user only states the desired outcome. You must derive:
+what needs to be done · which information is missing · which agent is responsible ·
+which tool is most reliable · which safety measures are needed · how success is measured
+objectively · whether independent verification is needed · how to react to failure ·
+what may be learned.
 
-Reihenfolge: Ziel klären → Experience Store prüfen → Risk Class → Task Contract → Lock →
-Preflight/Baseline/Backup → ausführen → Objective Test → `verification-agent` → Commit oder
+Order: clarify goal → check Experience Store → Risk Class → Task Contract → Lock →
+Preflight/Baseline/Backup → execute → Objective Test → `verification-agent` → Commit or
 Rollback → Experience Update.
 
-Frage nicht nach Dingen, die du selbst zuverlässig am Rechner ermitteln kannst.
+Don't ask about things you can reliably determine yourself on the machine.
 
-## Werkzeuge auf diesem Rechner
+## Tools on this machine
 
-| Zweck | Weg |
+| Purpose | Path |
 |---|---|
-| Windows-GUI | `adapters/ufo/` — UFO² als Aktionsschicht, **nicht** als eigener Agent |
-| Browser | Playwright CLI für bekannte Abläufe, Playwright MCP für exploratives Arbeiten |
-| Zweites Modell | `adapters/codex/` |
-| Zustand | `bin/agentsys/` (Python) — Ledger, Locks, Policy, Experience |
+| Windows GUI | `adapters/ufo/` — UFO² as the action layer, **not** as its own agent |
+| Browser | Playwright CLI for known workflows, Playwright MCP for exploratory work |
+| Second model | `adapters/codex/` |
+| State | `bin/agentsys/` (Python) — Ledger, Locks, Policy, Experience |
 
-PowerShell auf diesem Rechner: `powershell.exe` ist Windows PowerShell **5.1**. Es gibt kein
-`pwsh` im PATH. Skripte müssen 5.1-kompatibel sein oder einen geprüften PS7-Pfad mitbringen.
-Insbesondere `Test-Json` existiert unter 5.1 **nicht**.
+PowerShell on this machine: `powershell.exe` is Windows PowerShell **5.1**. There is no
+`pwsh` on the PATH. Scripts must be 5.1-compatible or bring a verified PS7 path.
+Notably, `Test-Json` does **not** exist under 5.1.
 
-Der Benutzer arbeitet auf Deutsch. Antworte auf Deutsch.
+The user works in German. Respond in German.
 
-## Modelle
+## Models
 
-Standard ist das aktive Abo-Modell. Zusatzkosten sind auf diesem Konto technisch ausgeschlossen
-(Extra Usage ist auf Organisationsebene deaktiviert), stärkere Modelle verbrauchen aber das
-Pro-Kontingent schneller. Ein stärkeres Modell nur bei echter Notwendigkeit: R3-Diagnose, komplexe
-Root-Cause-Analyse, widersprüchliche Evidenz.
+The default is the active subscription model. Additional costs are technically excluded on
+this account (extra usage is disabled at the organization level), but stronger models
+consume the Pro quota faster. A stronger model only when genuinely necessary: R3 diagnosis,
+complex root-cause analysis, contradictory evidence.
 
-## Subagenten
+## Subagents
 
-Sechs Agenten, definiert in `.claude/agents/`. Keine Agenteninflation — neue Agenten nur, wenn eine
-Domäne nachweislich nicht abgedeckt ist. Der `verification-agent` ist read-only und darf niemals
-reparieren.
+Six agents, defined in `.claude/agents/`. No agent inflation — new agents only when a
+domain is demonstrably not covered. The `verification-agent` is read-only and must never
+fix anything.
 
-Ergebnisformat der Subagenten siehe @AGENTS.md Abschnitt 24.
+For the subagent result format see @AGENTS.md section 24.
 
-## Antwortstil
+## Response style
 
-Antworten knapp halten: keine Nacherzählung des Auftrags, keine Erklärung offensichtlichen Codes,
-keine Tool-Call-Narration über das nötige Maß hinaus, keine ungefragte Abschlusszusammenfassung.
-Nur Plan, Befund, Ergebnis, offener Punkt.
+Keep responses concise: no recap of the task, no explanation of obvious code,
+no tool-call narration beyond what's needed, no unsolicited closing summary.
+Just plan, finding, result, open item.
 
-Bei sinnvollen Meilensteinen `/compact` vorschlagen, bei klarem Themenwechsel `/clear` — aber nur,
-wenn der bisherige Kontext dann wirklich nicht mehr gebraucht wird.
+Suggest `/compact` at sensible milestones, `/clear` on a clear topic change — but only
+when the prior context truly won't be needed anymore.

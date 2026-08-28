@@ -1,35 +1,33 @@
-"""ufoctl — UFO² als Windows-Aktionsschicht über die Kommandozeile.
+"""ufoctl — UFO² as a Windows action layer via the command line.
 
-Claude Code bleibt das Gehirn. UFO² liefert nur UI Automation: den
-Steuerelementbaum auslesen und begrenzte GUI-Aktionen ausführen. UFOs eigene
-HostAgent/AppAgent-Schleife wird nicht benutzt und braucht deshalb kein
-Sprachmodell.
+Claude Code remains the brain. UFO² only provides UI Automation: reading the
+control tree and executing limited GUI actions. UFO's own HostAgent/AppAgent
+loop is not used and therefore needs no language model.
 
-Der UFO-Core bleibt unverändert. Diese Datei liegt außerhalb von `C:\\UFO` und
-nutzt nur dessen registrierte MCP-Server im selben Prozess.
+The UFO core stays unchanged. This file lives outside `C:\\UFO` and only uses
+its registered MCP servers within the same process.
 
-## Warum CLI und nicht ein dauerhafter Serverprozess
+## Why a CLI and not a persistent server process
 
-Jeder Aufruf ist in sich geschlossen: Fenster auflösen, auswählen, handeln,
-Ergebnis zurücklesen. Das macht jeden Schritt reproduzierbar und einzeln
-verifizierbar, hält die Kontextausgabe klein und hinterlässt keinen laufenden
-Dienst.
+Every call is self-contained: resolve the window, select it, act, read the
+result back. That makes each step reproducible and independently verifiable,
+keeps the context output small, and leaves no running service behind.
 
-UFOs Fensterauswahl lebt im Prozess. Ein Aufruf, der eine Aktion ausführt,
-wählt das Fenster deshalb immer selbst aus — eine Auswahl aus einem früheren
-Aufruf gibt es nicht.
+UFO's window selection lives in the process. A call that performs an action
+therefore always selects the window itself — there is no carryover selection
+from an earlier call.
 
-## Bewusst nicht eingebunden: CommandLineExecutor
+## Deliberately not wired in: CommandLineExecutor
 
-UFO registriert auch einen Shell-Executor. Der bleibt außen vor. Claude hat
-über Bash und PowerShell bereits Shell-Zugriff, und der läuft durch den Policy
-Guard. Ein zweiter Shell-Weg würde diese Sicherheitsgrenze umgehen.
+UFO also registers a shell executor. That one stays out. Claude already has
+shell access via Bash and PowerShell, which runs through the policy guard. A
+second shell path would bypass that security boundary.
 
-## Aufruf
+## Invocation
 
-    C:\\UFO\\.venv\\Scripts\\python.exe C:\\AgentSystem\\adapters\\ufo\\ufoctl.py <befehl>
+    C:\\UFO\\.venv\\Scripts\\python.exe C:\\AgentSystem\\adapters\\ufo\\ufoctl.py <command>
 
-Alle Ausgaben sind JSON auf stdout. Diagnose geht nach stderr.
+All output is JSON on stdout. Diagnostics go to stderr.
 """
 
 from __future__ import annotations
@@ -46,12 +44,12 @@ from typing import Any
 
 UFO_ROOT = Path(os.environ.get("UFO_ROOT", r"C:\UFO"))
 
-# UICollector liest den Steuerelementbaum. HostUIExecutor wählt ein Fenster
-# aus - das aktiviert es nur und mutiert nichts, wird aber auch zum Lesen
-# gebraucht, weil UFO die Steuerelemente immer für das aktive Fenster liefert.
+# UICollector reads the control tree. HostUIExecutor selects a window - that
+# only activates it and mutates nothing, but is also needed for reading,
+# because UFO always reports the controls of the active window.
 READ_SERVERS = ("UICollector", "HostUIExecutor")
 
-# Nur hier stecken echte Mutationen: klicken, tippen, ziehen, scrollen.
+# Only here do real mutations happen: click, type, drag, scroll.
 ACTION_SERVERS = ("AppUIExecutor",)
 
 EXCLUDED = ("CommandLineExecutor",)
@@ -67,14 +65,13 @@ def _stderr(message: str) -> None:
 
 def _prepare() -> None:
     if not UFO_ROOT.is_dir():
-        sys.exit(json.dumps({"error": f"UFO nicht gefunden: {UFO_ROOT}"}))
+        sys.exit(json.dumps({"error": f"UFO not found: {UFO_ROOT}"}))
     if str(UFO_ROOT) not in sys.path:
         sys.path.insert(0, str(UFO_ROOT))
-    # UFOs Config-Loader sucht `config/ufo/` relativ zum Arbeitsverzeichnis.
+    # UFO's config loader looks for `config/ufo/` relative to the working directory.
     os.chdir(UFO_ROOT)
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-    # UFO protokolliert sehr gesprächig nach stdout; das würde die JSON-Ausgabe
-    # zerstören.
+    # UFO logs very verbosely to stdout; that would destroy the JSON output.
     logging.disable(logging.CRITICAL)
 
 
@@ -93,10 +90,10 @@ def _build(read_only: bool):
 
 
 def _payload(result: Any) -> Any:
-    """Holt das Ergebnis eines Tool-Aufrufs zuverlässig heraus.
+    """Reliably extracts the result of a tool call.
 
-    `.content[0].text` ist nicht verlässlich - bei strukturierter Ausgabe kann
-    die Liste leer sein. `.data` ist der belastbare Zugriff.
+    `.content[0].text` is not reliable - with structured output the list can
+    be empty. `.data` is the robust access path.
     """
     data = getattr(result, "data", None)
     if data is not None:
@@ -117,7 +114,7 @@ def _payload(result: Any) -> Any:
 
 
 class Session:
-    """Ein UFO-Arbeitsgang innerhalb eines einzigen Prozesses."""
+    """A UFO work session within a single process."""
 
     def __init__(self, client):
         self._client = client
@@ -125,7 +122,7 @@ class Session:
     async def call(self, tool: str, arguments: dict | None = None) -> Any:
         result = await self._client.call_tool(tool, arguments or {})
         if getattr(result, "is_error", False):
-            raise RuntimeError(f"{tool} meldete einen Fehler: {_payload(result)}")
+            raise RuntimeError(f"{tool} reported an error: {_payload(result)}")
         return _payload(result)
 
     async def windows(self) -> list[dict]:
@@ -133,7 +130,7 @@ class Session:
         return data if isinstance(data, list) else []
 
     async def resolve_window(self, needle: str) -> dict:
-        """Findet ein Fenster über seine ID oder einen Namensausschnitt."""
+        """Finds a window by its ID or a name fragment."""
         windows = await self.windows()
         for window in windows:
             if str(window.get("id")) == str(needle):
@@ -147,12 +144,12 @@ class Session:
             return partial[0]
         if len(partial) > 1:
             raise RuntimeError(
-                f"'{needle}' passt auf mehrere Fenster: "
+                f"'{needle}' matches multiple windows: "
                 + ", ".join(f"{w['id']}={w['name']}" for w in partial)
-                + " — bitte die ID oder den vollen Namen angeben"
+                + " — please specify the ID or the full name"
             )
         raise RuntimeError(
-            f"Kein Fenster passt auf '{needle}'. Offen sind: "
+            f"No window matches '{needle}'. Open windows: "
             + ", ".join(f"{w['id']}={w['name']}" for w in windows)
         )
 
@@ -160,17 +157,17 @@ class Session:
         window = await self.resolve_window(needle)
         info = await self.call("host_select_application_window",
                                {"id": str(window["id"]), "name": window["name"]})
-        # Kurz warten: die Steuerelemente sind unmittelbar nach dem Aktivieren
-        # nicht immer schon aufgezählt.
+        # Wait briefly: the controls are not always already enumerated right
+        # after activation.
         time.sleep(settle)
         return {"window": window, "selection": info}
 
     async def controls(self, fields: list[str], retries: int = 3) -> list[dict]:
-        """Liest die Steuerelemente des ausgewählten Fensters.
+        """Reads the controls of the selected window.
 
-        Direkt nach dem Fensterwechsel liefert UFO gelegentlich eine leere
-        Liste. Ein begrenzter Wiederholungsversuch ist hier keine blinde
-        Wiederholung, sondern das Abwarten eines bekannten Rennens.
+        Right after a window switch, UFO occasionally returns an empty list.
+        A bounded retry here is not a blind repeat, but waiting out a known
+        race.
         """
         for attempt in range(retries):
             data = await self.call("ui_get_app_window_controls_info",
@@ -182,12 +179,12 @@ class Session:
         return []
 
     async def read_control(self, label: str, fields: list[str]) -> dict | None:
-        """Liest ein Steuerelement über die Steuerelementliste erneut aus.
+        """Re-reads a control via the control list.
 
-        Bewusst nicht über `app_texts`: UFO v3.0.8 deklariert dort `-> str`,
-        liefert aber eine Liste, was die Ausgabevalidierung sprengt. Die
-        Steuerelementliste enthält dieselbe Information und hat ein korrektes
-        Schema. Siehe docs/known-issues.md.
+        Deliberately not via `app_texts`: UFO v3.0.8 declares `-> str` there
+        but returns a list, which breaks output validation. The control list
+        carries the same information and has a correct schema. See
+        docs/known-issues.md.
         """
         for item in await self.controls(fields):
             if str(item.get("label")) == str(label):
@@ -195,10 +192,10 @@ class Session:
         return None
 
     async def resolve_control(self, needle: str, fields: list[str]) -> dict:
-        """Findet ein Steuerelement über sein Label oder einen Textausschnitt."""
+        """Finds a control by its label or a text fragment."""
         items = await self.controls(fields)
         if not items:
-            raise RuntimeError("Das Fenster meldet keine Steuerelemente")
+            raise RuntimeError("The window reports no controls")
         for item in items:
             if str(item.get("label")) == str(needle):
                 return item
@@ -211,12 +208,12 @@ class Session:
             return partial[0]
         if len(partial) > 1:
             raise RuntimeError(
-                f"'{needle}' passt auf mehrere Steuerelemente: "
+                f"'{needle}' matches multiple controls: "
                 + ", ".join(f"{i['label']}={i.get('control_text')}" for i in partial[:10])
-                + " — bitte das Label angeben"
+                + " — please specify the label"
             )
         raise RuntimeError(
-            f"Kein Steuerelement passt auf '{needle}'. Vorhanden sind: "
+            f"No control matches '{needle}'. Available: "
             + ", ".join(f"{i['label']}={i.get('control_text')}" for i in items[:25])
         )
 
@@ -229,7 +226,7 @@ async def _with_session(read_only: bool, body) -> Any:
 
 
 # --------------------------------------------------------------------------
-# Befehle
+# Commands
 # --------------------------------------------------------------------------
 
 
@@ -298,8 +295,8 @@ def cmd_type(args) -> Any:
             "id": str(control["label"]), "name": control.get("control_text", ""),
             "text": args.text, "clear_current_text": args.clear,
         })
-        # Zurücklesen: eine geschriebene Eingabe gilt erst als gesetzt, wenn
-        # sie erneut ausgelesen wurde.
+        # Read back: a written value only counts as set once it has been
+        # re-read.
         verified = await session.read_control(control["label"], DEFAULT_FIELDS)
         written = args.text in (verified or {}).get("control_text", "")
         return {"window": selection["window"], "control": control,
@@ -344,15 +341,16 @@ def cmd_screenshot(args) -> Any:
 
 
 def cmd_inspect(args) -> Any:
-    """Liest den echten Zustand eines Steuerelements - ohne UFO.
+    """Reads the real state of a control - without UFO.
 
-    UFOs Steuerelementliste kann veraltete Werte liefern: sie meldet
-    `element_info.name` statt des lebenden `window_text()`. Eine mit UFO
-    ausgeführte Aktion darf deshalb niemals mit UFOs eigener Liste verifiziert
-    werden - das wäre der Executor, der sich selbst bestätigt.
+    UFO's control list can return stale values: it reports
+    `element_info.name` instead of the live `window_text()`. An action
+    performed with UFO must therefore never be verified with UFO's own list
+    - that would be the executor confirming itself.
 
-    Dieser Befehl geht direkt über pywinauto an die UI-Automation-Schnittstelle
-    und ist damit die unabhängige Messung im Sinne von AGENTS.md Abschnitt 13.
+    This command goes directly through pywinauto to the UI Automation
+    interface and is thus the independent measurement in the sense of
+    AGENTS.md section 13.
     """
     _prepare()
     import warnings
@@ -367,9 +365,9 @@ def cmd_inspect(args) -> Any:
             continue
         if args.window.lower() not in title.lower():
             continue
-        # pywinauto akzeptiert `depth` nur zusammen mit einem Suchkriterium;
-        # allein uebergeben scheitert es intern. Ohne --type wird deshalb
-        # unbegrenzt aufgezaehlt und erst das Ergebnis begrenzt.
+        # pywinauto only accepts `depth` together with a search criterion;
+        # passed alone it fails internally. Without --type, enumeration is
+        # therefore unbounded and only the result is limited.
         try:
             children = (window.descendants(control_type=args.type, depth=args.depth)
                         if args.type else window.descendants())
@@ -412,16 +410,16 @@ def cmd_tools(args) -> Any:
 
 
 def cmd_plan(args) -> Any:
-    """Führt eine Schrittfolge in einem einzigen Fensterkontext aus.
+    """Runs a sequence of steps within a single window context.
 
-    Format der Datei:
+    File format:
 
         {"window": "Editor",
-         "steps": [{"action": "type", "control": "Text-Editor", "text": "hallo"},
+         "steps": [{"action": "type", "control": "Text-Editor", "text": "hello"},
                    {"action": "keys", "control": "Text-Editor", "keys": "^s"}]}
 
-    Bricht beim ersten Fehlschlag ab und meldet, welche Schritte bereits
-    ausgeführt wurden — ein halb ausgeführter Plan darf nie als Erfolg gelten.
+    Aborts on the first failure and reports which steps already ran — a
+    half-executed plan must never count as success.
     """
     plan = json.loads(Path(args.file).read_text(encoding="utf-8"))
 
@@ -456,7 +454,7 @@ def cmd_plan(args) -> Any:
                         result = await session.read_control(control["label"],
                                                             DEFAULT_FIELDS)
                     else:
-                        raise RuntimeError(f"Unbekannte Aktion: {action}")
+                        raise RuntimeError(f"Unknown action: {action}")
                 done.append({"index": index, "action": action,
                              "control": control, "result": result, "status": "OK"})
             except Exception as error:  # noqa: BLE001
@@ -477,35 +475,35 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ufoctl", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("windows", help="Offene Fenster auflisten").set_defaults(func=cmd_windows)
+    sub.add_parser("windows", help="List open windows").set_defaults(func=cmd_windows)
 
-    controls = sub.add_parser("controls", help="Steuerelemente eines Fensters auflisten")
+    controls = sub.add_parser("controls", help="List the controls of a window")
     controls.add_argument("--window", required=True)
     controls.add_argument("--fields", nargs="+")
-    controls.add_argument("--type", help="Nur diesen Steuerelementtyp")
-    controls.add_argument("--contains", help="Nur Elemente mit diesem Text")
+    controls.add_argument("--type", help="Only this control type")
+    controls.add_argument("--contains", help="Only elements with this text")
     controls.add_argument("--limit", type=int, default=80)
     controls.set_defaults(func=cmd_controls)
 
-    tree = sub.add_parser("tree", help="Vollständigen UI-Baum ausgeben")
+    tree = sub.add_parser("tree", help="Print the full UI tree")
     tree.add_argument("--window", required=True)
     tree.set_defaults(func=cmd_tree)
 
-    texts = sub.add_parser("texts", help="Text eines Steuerelements lesen")
+    texts = sub.add_parser("texts", help="Read the text of a control")
     texts.add_argument("--window", required=True)
     texts.add_argument("--control", required=True)
     texts.set_defaults(func=cmd_texts)
 
-    click = sub.add_parser("click", help="Steuerelement anklicken")
+    click = sub.add_parser("click", help="Click a control")
     click.add_argument("--window", required=True)
     click.add_argument("--control", required=True)
     click.add_argument("--button", default="left", choices=["left", "right", "middle"])
     click.add_argument("--double", action="store_true")
     click.add_argument("--read-back", action="store_true",
-                       help="Steuerelemente nach dem Klick erneut auslesen")
+                       help="Re-read the controls after the click")
     click.set_defaults(func=cmd_click)
 
-    typing = sub.add_parser("type", help="Text in ein Eingabefeld schreiben")
+    typing = sub.add_parser("type", help="Write text into an input field")
     typing.add_argument("--window", required=True)
     typing.add_argument("--control", required=True)
     typing.add_argument("--text", required=True)
@@ -513,41 +511,41 @@ def build_parser() -> argparse.ArgumentParser:
     typing.add_argument("--no-clear", dest="clear", action="store_false")
     typing.set_defaults(func=cmd_type)
 
-    keys = sub.add_parser("keys", help="Tastenfolge senden, z. B. ^s für Strg+S")
+    keys = sub.add_parser("keys", help="Send a key sequence, e.g. ^s for Ctrl+S")
     keys.add_argument("--window", required=True)
     keys.add_argument("--control", required=True)
     keys.add_argument("--keys", required=True)
     keys.add_argument("--no-focus", action="store_true")
     keys.set_defaults(func=cmd_keys)
 
-    scroll = sub.add_parser("scroll", help="Mausrad im Steuerelement drehen")
+    scroll = sub.add_parser("scroll", help="Turn the mouse wheel on a control")
     scroll.add_argument("--window", required=True)
     scroll.add_argument("--control", required=True)
     scroll.add_argument("--dist", type=int, default=-3)
     scroll.set_defaults(func=cmd_scroll)
 
-    shot = sub.add_parser("screenshot", help="Screenshot aufnehmen")
+    shot = sub.add_parser("screenshot", help="Take a screenshot")
     shot.add_argument("--window")
     shot.add_argument("--all-screens", action="store_true")
     shot.set_defaults(func=cmd_screenshot)
 
     inspect_cmd = sub.add_parser(
         "inspect",
-        help="Echten Steuerelementzustand ohne UFO lesen - unabhängige Verifikation")
+        help="Read the real control state without UFO - independent verification")
     inspect_cmd.add_argument("--window", required=True)
-    inspect_cmd.add_argument("--control", help="Namensausschnitt des Steuerelements")
-    inspect_cmd.add_argument("--type", help="UIA-Steuerelementtyp, z. B. Edit")
-    inspect_cmd.add_argument("--expect", help="Erwarteter Inhalt; setzt 'verified'")
+    inspect_cmd.add_argument("--control", help="Name fragment of the control")
+    inspect_cmd.add_argument("--type", help="UIA control type, e.g. Edit")
+    inspect_cmd.add_argument("--expect", help="Expected content; sets 'verified'")
     inspect_cmd.add_argument("--limit", type=int, default=40)
     inspect_cmd.add_argument("--depth", type=int, default=12,
-                             help="Maximale Aufzaehlungstiefe im Steuerelementbaum")
+                             help="Maximum enumeration depth in the control tree")
     inspect_cmd.set_defaults(func=cmd_inspect)
 
-    tools = sub.add_parser("tools", help="Verfügbare UFO-Werkzeuge auflisten")
+    tools = sub.add_parser("tools", help="List available UFO tools")
     tools.add_argument("--read-only", action="store_true")
     tools.set_defaults(func=cmd_tools)
 
-    plan = sub.add_parser("plan", help="Schrittfolge aus einer JSON-Datei ausführen")
+    plan = sub.add_parser("plan", help="Run a sequence of steps from a JSON file")
     plan.add_argument("--file", required=True)
     plan.set_defaults(func=cmd_plan)
 

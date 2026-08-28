@@ -1,11 +1,11 @@
-"""Environment Fingerprint.
+"""Environment fingerprint.
 
-Eine Erfahrung ist nur so viel wert wie die Umgebung, in der sie gemessen
-wurde. Dieses Modul erfasst die relevanten Versionen, damit später entschieden
-werden kann, ob eine gespeicherte Erkenntnis noch anwendbar ist.
+An experience is only as valuable as the environment in which it was
+measured. This module captures the relevant versions so that later it can
+be decided whether a stored finding is still applicable.
 
-Die Erfassung ist bewusst tolerant: fehlt ein Werkzeug, wird `None` vermerkt,
-statt zu scheitern.
+The capture is deliberately tolerant: if a tool is missing, `None` is
+recorded instead of failing.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Any
 
 from . import paths
 
-# Werkzeug -> Kommando zum Auslesen der Version.
+# Tool -> command to read out the version.
 _PROBES: dict[str, list[str]] = {
     "python": ["python", "--version"],
     "node": ["node", "--version"],
@@ -30,9 +30,9 @@ _PROBES: dict[str, list[str]] = {
     "codex": ["codex", "--version"],
 }
 
-# Playwright ist bewusst lokal im Adapterverzeichnis installiert, damit die
-# Version festgehalten werden kann. Ein globales `npx playwright` gibt es
-# deshalb nicht und würde nur eine irreführende Antwort liefern.
+# Playwright is deliberately installed locally in the adapter directory so
+# the version can be pinned down. There is therefore no global
+# `npx playwright`, and it would only give a misleading answer.
 _PLAYWRIGHT_BIN = (
     paths.ADAPTERS_DIR / "playwright" / "node_modules" / ".bin" / "playwright.cmd"
 )
@@ -41,8 +41,8 @@ _VERSION_RE = re.compile(r"\d+(?:\.\d+)+(?:[-.\w]+)?")
 
 
 def _probe(command: list[str]) -> str | None:
-    # Der aufgelöste Pfad ist nötig: CreateProcess startet unter Windows keine
-    # .cmd-Wrapper (npm, npx) über den bloßen Namen.
+    # The resolved path is necessary: on Windows, CreateProcess does not
+    # start .cmd wrappers (npm, npx) via the bare name.
     resolved = shutil.which(command[0])
     if resolved is None:
         return None
@@ -53,10 +53,10 @@ def _probe(command: list[str]) -> str | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    # Nur ein erfolgreicher Aufruf zählt. Fehlermeldungen enthalten oft eine
-    # Versionsnummer - etwa npm's "npx canceled due to missing packages:
-    # ['playwright@1.62.1']" - und würden ein nicht installiertes Werkzeug
-    # fälschlich als vorhanden melden.
+    # Only a successful call counts. Error messages often contain a version
+    # number - e.g. npm's "npx canceled due to missing packages:
+    # ['playwright@1.62.1']" - and would falsely report an uninstalled tool
+    # as present.
     if completed.returncode != 0:
         return None
     output = (completed.stdout or completed.stderr or "").strip()
@@ -112,7 +112,7 @@ def _playwright_version() -> str | None:
 
 
 def _claude_code_version() -> str | None:
-    """Liest die Version aus dem Verzeichnisnamen der installierten CLI."""
+    """Reads the version from the directory name of the installed CLI."""
     from pathlib import Path
     import os
     base = Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code"
@@ -127,7 +127,7 @@ def _claude_code_version() -> str | None:
 
 
 def collect() -> dict[str, Any]:
-    """Erfasst den aktuellen Environment Fingerprint."""
+    """Captures the current environment fingerprint."""
     data: dict[str, Any] = {
         "os": platform.system(),
         "os_release": platform.release(),
@@ -143,7 +143,7 @@ def collect() -> dict[str, Any]:
 
 
 def digest(data: dict[str, Any] | None = None) -> str:
-    """Kurzer, stabiler Hash über den Fingerprint - für Environment-Match-Prüfungen."""
+    """Short, stable hash over the fingerprint - for environment-match checks."""
     payload = data if data is not None else collect()
     canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
@@ -151,11 +151,11 @@ def digest(data: dict[str, Any] | None = None) -> str:
 
 def matches(stored: dict[str, Any], current: dict[str, Any] | None = None,
             *, keys: tuple[str, ...] | None = None) -> tuple[bool, list[str]]:
-    """Vergleicht zwei Fingerprints.
+    """Compares two fingerprints.
 
-    Gibt zurück, ob sie für die angegebenen Schlüssel übereinstimmen, und
-    welche Schlüssel abweichen. Fehlt ein Wert auf einer Seite, zählt das als
-    Abweichung — eine unbekannte Umgebung ist keine passende Umgebung.
+    Returns whether they match for the given keys, and which keys differ.
+    If a value is missing on one side, that counts as a mismatch — an
+    unknown environment is not a matching environment.
     """
     now = current if current is not None else collect()
     relevant = keys or tuple(stored.keys())
@@ -164,7 +164,7 @@ def matches(stored: dict[str, Any], current: dict[str, Any] | None = None,
 
 
 def save_known_good(name: str, data: dict[str, Any] | None = None) -> str:
-    """Friert den aktuellen Stand als Known-Good-Version ein."""
+    """Freezes the current state as a known-good version."""
     paths.ensure_dirs()
     payload = data if data is not None else collect()
     record = {"name": name, "digest": digest(payload), "versions": payload}

@@ -24,5 +24,5 @@ Purpose: OpenAI codex-plugin-cc 1.0.6 records imported Windows paths with the
 Rust verbatim prefix (\\?\), while Node realpathSync omits it. The live Claude
 JSONL may also grow between import and lookup, invalidating the strict hash.
 The patch normalizes paths and treats the hash as a preference. Remove this
-patch only after a newer official plugin version passes the real Windows
-transfer test in tests/test_codex_plugin.py.
+patch only after a newer official plugin version passes a real Windows
+transfer test against your own installed plugin.

@@ -1,33 +1,33 @@
-"""UFO²-MCP-Server für exploratives Arbeiten.
+"""UFO² MCP server for exploratory work.
 
-**Ergänzung zu `ufoctl.py`, kein Ersatz.** Beide Wege existieren nebeneinander,
-weil sie unterschiedliche Aufgaben lösen:
+**A complement to `ufoctl.py`, not a replacement.** Both paths exist side by
+side because they solve different tasks:
 
-* `ufoctl.py` — für bekannte, wiederholbare Abläufe. Jeder Aufruf ist in sich
-  geschlossen, deterministisch skriptbar, mit kleiner Kontextausgabe und ohne
-  laufenden Prozess. Der Normalfall.
-* Dieser MCP-Server — für exploratives Arbeiten in einer unbekannten
-  Oberfläche. Der Fensterzustand bleibt über viele Schritte hinweg erhalten,
-  statt bei jedem Aufruf neu aufgebaut zu werden. Das spart Zeit, wenn man sich
-  erst durch eine Anwendung tasten muss.
+* `ufoctl.py` — for known, repeatable workflows. Every call is self-contained,
+  deterministically scriptable, with small context output and no running
+  process. The default case.
+* This MCP server — for exploratory work in an unfamiliar interface. Window
+  state persists across many steps instead of being rebuilt on every call.
+  That saves time when you first have to feel your way through an
+  application.
 
-Der UFO-Core bleibt unverändert. Diese Datei liegt ausserhalb von `C:\\UFO`
-und benutzt nur dessen registrierte MCP-Server.
+The UFO core stays unchanged. This file lives outside `C:\\UFO` and only uses
+its registered MCP servers.
 
-## Bewusst nicht eingebunden: CommandLineExecutor
+## Deliberately not wired in: CommandLineExecutor
 
-UFO registriert auch einen Shell-Executor. Der bleibt aussen vor. Claude hat
-über Bash und PowerShell bereits Shell-Zugriff, und der läuft durch den Policy
-Guard. Ein zweiter Shell-Weg über MCP würde diese Sicherheitsgrenze umgehen.
+UFO also registers a shell executor. That one stays out. Claude already has
+shell access via Bash and PowerShell, which runs through the policy guard. A
+second shell path via MCP would bypass that security boundary.
 
-## Verifikation
+## Verification
 
-Auch im MCP-Modus gilt: Eine Aktion wird **nicht** mit UFOs eigener
-Steuerelementliste verifiziert — die meldet den Accessible Name statt des
-lebenden Werts. Dafür gibt es `ufoctl.py inspect`, das über pywinauto an UFO
-vorbei misst. Siehe `docs/known-issues.md`.
+Even in MCP mode: an action is **never** verified with UFO's own control list
+— that reports the accessible name instead of the live value. `ufoctl.py
+inspect` exists for that, measuring past UFO via pywinauto. See
+`docs/known-issues.md`.
 
-## Aufruf
+## Invocation
 
     C:\\UFO\\.venv\\Scripts\\python.exe ufo_mcp.py [--read-only] [--list]
 """
@@ -44,50 +44,50 @@ from pathlib import Path
 
 UFO_ROOT = Path(os.environ.get("UFO_ROOT", r"C:\UFO"))
 
-# UICollector liest, HostUIExecutor wählt ein Fenster aus (aktiviert es nur).
+# UICollector reads, HostUIExecutor selects a window (only activates it).
 READ_SERVERS = ("UICollector", "HostUIExecutor")
-# Nur hier stecken echte Mutationen.
+# Only here do real mutations happen.
 ACTION_SERVERS = ("AppUIExecutor",)
 EXCLUDED = ("CommandLineExecutor",)
 
 PREFIX = {"UICollector": "ui", "HostUIExecutor": "host", "AppUIExecutor": "app"}
 
 INSTRUCTIONS = """\
-Windows-UI-Automation über UFO². Für exploratives Arbeiten in einer unbekannten
-Oberfläche; der Fensterzustand bleibt zwischen den Aufrufen erhalten.
+Windows UI automation via UFO². For exploratory work in an unfamiliar
+interface; window state persists across calls.
 
-Arbeitsweise:
-1. ui_get_desktop_app_info -> offene Fenster mit id und name
-2. host_select_application_window -> Fenster aktivieren
-3. ui_get_app_window_controls_info -> Steuerelemente mit label, control_text,
-   control_type. Dieser Schritt ist Pflicht vor jeder Aktion; ohne ihn kennt
-   UFO die Elemente nicht.
-4. app_click_input / app_set_edit_text / app_keyboard_input -> über das label
-   handeln, nicht über Koordinaten.
+Workflow:
+1. ui_get_desktop_app_info -> open windows with id and name
+2. host_select_application_window -> activate a window
+3. ui_get_app_window_controls_info -> controls with label, control_text,
+   control_type. This step is mandatory before every action; without it UFO
+   does not know the elements.
+4. app_click_input / app_set_edit_text / app_keyboard_input -> act via the
+   label, not via coordinates.
 
-Koordinatenbasierte Aktionen sind nicht reproduzierbar und brechen bei jeder
-Layoutänderung - nur benutzen, wenn kein benanntes Steuerelement existiert.
+Coordinate-based actions are not reproducible and break with every layout
+change - only use them when no named control exists.
 
-Wichtig zur Verifikation: Die Steuerelementliste meldet bei Eingabefeldern den
-Accessible Name, nicht den eingegebenen Inhalt, und kann veraltet sein. Eine
-ausgeführte Aktion wird deshalb nicht mit dieser Liste bestätigt, sondern mit
-'ufoctl.py inspect', das über pywinauto direkt misst.
+Important for verification: for input fields, the control list reports the
+accessible name, not the entered content, and can be stale. An executed
+action is therefore not confirmed with this list, but with 'ufoctl.py
+inspect', which measures directly via pywinauto.
 
-Für bekannte, wiederholbare Abläufe ist ufoctl.py der bessere Weg: kleinere
-Ausgabe, deterministisch skriptbar, einzeln verifizierbar.
+For known, repeatable workflows, ufoctl.py is the better path: smaller
+output, deterministically scriptable, individually verifiable.
 """
 
 
 def _prepare() -> None:
     if not UFO_ROOT.is_dir():
-        sys.exit(f"UFO wurde nicht gefunden: {UFO_ROOT}")
+        sys.exit(f"UFO was not found: {UFO_ROOT}")
     if str(UFO_ROOT) not in sys.path:
         sys.path.insert(0, str(UFO_ROOT))
-    # UFOs Config-Loader sucht `config/ufo/` relativ zum Arbeitsverzeichnis.
+    # UFO's config loader looks for `config/ufo/` relative to the working directory.
     os.chdir(UFO_ROOT)
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-    # stdout gehört dem MCP-Protokoll. UFO protokolliert sehr gesprächig und
-    # würde den Transport zerstören.
+    # stdout belongs to the MCP protocol. UFO logs very verbosely and would
+    # destroy the transport.
     logging.disable(logging.CRITICAL)
 
 
@@ -110,9 +110,9 @@ def build_server(read_only: bool):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--read-only", action="store_true",
-                        help="Nur lesende Werkzeuge einbinden, keine GUI-Aktionen")
+                        help="Only mount read-only tools, no GUI actions")
     parser.add_argument("--list", action="store_true",
-                        help="Werkzeuge auflisten und beenden (für Tests)")
+                        help="List tools and exit (for tests)")
     args = parser.parse_args()
 
     server, mounted = build_server(args.read_only)
@@ -127,7 +127,7 @@ def main() -> int:
         }, ensure_ascii=False, indent=2))
         return 0
 
-    # show_banner=False: auf stdout darf nichts ausser dem MCP-Protokoll stehen.
+    # show_banner=False: stdout must contain nothing but the MCP protocol.
     server.run(transport="stdio", show_banner=False)
     return 0
 

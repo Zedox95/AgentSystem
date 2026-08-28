@@ -1,4 +1,4 @@
-"""Isolierte Tests fuer Candidate Queue, Suche und Archivist."""
+"""Isolated tests for the candidate queue, search, and archivist."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 _TMP = Path(tempfile.mkdtemp(prefix="agentsys-brain-"))
 _VAULT = _TMP / "vault"
 (_VAULT / "01 Inbox").mkdir(parents=True)
@@ -47,26 +47,26 @@ for state in ("PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP", "EXECU
 
 first = knowledge.submit(make_candidate("12.0.1"))
 duplicate = knowledge.submit(make_candidate("12.0.1"))
-check(first["duplicate"] is False, "Erster Candidate darf kein Duplikat sein")
-check(duplicate["duplicate"] is True, "Identischer Candidate muss dedupliziert werden")
-check(len(knowledge.list_candidates()) == 1, "Queue muss genau einen Candidate enthalten")
+check(first["duplicate"] is False, "First candidate must not be a duplicate")
+check(duplicate["duplicate"] is True, "Identical candidate must be deduplicated")
+check(len(knowledge.list_candidates()) == 1, "Queue must contain exactly one candidate")
 
 decision = knowledge.approve(
     first["candidate_id"], vault_root=_VAULT,
     task_id=task_id, expected_sha256="NEW",
 )
 note = _VAULT / decision["target_note"]
-check(note.is_file(), "Archivist muss die Entity-Notiz anlegen")
+check(note.is_file(), "Archivist must create the entity note")
 text = note.read_text(encoding="utf-8")
 check("entity: \"router-speedport-smart4\"" in text,
-      "Entity-Frontmatter fehlt")
+      "Entity frontmatter missing")
 check("agentsystem:facts:start" in text and "12.0.1" in text,
-      "Verwalteter Faktenblock fehlt")
-check(not knowledge.list_candidates(), "Akzeptierter Candidate muss pending verlassen")
+      "Managed facts block missing")
+check(not knowledge.list_candidates(), "Accepted candidate must leave pending")
 check(len(knowledge.list_candidates("accepted")) == 1,
-      "Akzeptierter Candidate muss historisiert werden")
+      "Accepted candidate must be historicized")
 
-# Unverwaltete und private Notizen werden nicht in automatische Kontexte gezogen.
+# Unmanaged and private notes are not pulled into automatic contexts.
 (_VAULT / "private.md").write_text("Mein privater Text zum Router", encoding="utf-8")
 managed_looking_private = _VAULT / "private-with-frontmatter.md"
 managed_looking_private.write_text(
@@ -84,10 +84,10 @@ daily.write_text(
 )
 matches = knowledge.search(_VAULT, "Firmware Router", entity="router-speedport-smart4")
 check(len(matches) == 1 and matches[0]["source_path"] == decision["target_note"],
-      f"Suche muss nur verwaltete, nicht-private Notiz liefern: {matches}")
+      f"Search must return only the managed, non-private note: {matches}")
 
-# Selbst vollstaendiges Frontmatter macht eine private Notiz nicht verwaltet;
-# ein explizites target_note darf diese Grenze ebenfalls nicht umgehen.
+# Even complete frontmatter doesn't make a private note managed; an
+# explicit target_note must not bypass this boundary either.
 private_candidate = KnowledgeCandidate(
     entity="private-router-note", fact_key="should.not.write", value="blocked",
     status="current", confidence="high", source_type="user_confirmed",
@@ -106,9 +106,9 @@ try:
 except knowledge.KnowledgeConflict:
     pass
 check(managed_looking_private.read_bytes() == before_private,
-      "Blockierte private Notiz muss byte-identisch bleiben")
+      "Blocked private note must stay byte-identical")
 
-# Versionierende Felder duerfen nicht in einer alten Candidate-ID verschwinden.
+# Versioning fields must not disappear into an old candidate ID.
 reverified = KnowledgeCandidate(
     entity="router-speedport-smart4", fact_key="firmware.version",
     value="12.0.1", status="current", confidence="high",
@@ -117,15 +117,15 @@ reverified = KnowledgeCandidate(
 )
 reverified_submission = knowledge.submit(reverified)
 check(reverified_submission["candidate_id"] != first["candidate_id"],
-      "Neues last_verified braucht eine eigene Candidate-ID")
+      "A new last_verified needs its own candidate ID")
 
-# Bereits akzeptierter Inhalt wird auch bucket-uebergreifend dedupliziert.
+# Content already accepted is deduplicated across buckets too.
 accepted_duplicate = knowledge.submit(make_candidate("12.0.1"))
 check(accepted_duplicate["duplicate"] and accepted_duplicate["status"] == "ACCEPTED",
-      "Deduplizierung muss accepted/rejected Buckets einbeziehen")
+      "Deduplication must include the accepted/rejected buckets")
 
-# Eine schwaechere Bestaetigung desselben Werts darf die fuer Retrieval
-# verwendete Notizprioritaet nicht degradieren.
+# A weaker confirmation of the same value must not degrade the note
+# priority used for retrieval.
 same_value_weak = knowledge.submit(make_candidate(
     "12.0.1", source_type="community", source_ref="forum:gleicher-wert"))
 knowledge.approve(
@@ -134,14 +134,14 @@ knowledge.approve(
 )
 frontmatter_after_weak = note.read_text(encoding="utf-8")
 check('source_type: "measurement"' in frontmatter_after_weak,
-      "Schwaechere Quelle mit gleichem Wert darf Frontmatter nicht degradieren")
+      "A weaker source with the same value must not degrade the frontmatter")
 retrieved_after_weak = knowledge.search(
     _VAULT, "Firmware", entity="router-speedport-smart4"
 )
 check(retrieved_after_weak[0]["source_type"] == "measurement",
-      "Retrieval muss weiterhin die staerkste aktive Quelle melden")
+      "Retrieval must still report the strongest active source")
 
-# Optimistic Concurrency verhindert Lost Updates.
+# Optimistic concurrency prevents lost updates.
 second = knowledge.submit(make_candidate("12.0.2"))
 try:
     knowledge.approve(second["candidate_id"], vault_root=_VAULT,
@@ -150,7 +150,7 @@ try:
 except knowledge.KnowledgeConflict:
     pass
 
-# Eine schwaechere Quelle darf einen Messwert nicht ersetzen.
+# A weaker source must not replace a measurement.
 weak = knowledge.submit(make_candidate(
     "13.0.0", source_type="community", source_ref="forum:beitrag-1"))
 try:
@@ -160,7 +160,7 @@ try:
 except knowledge.KnowledgeConflict:
     pass
 
-# Ein zweiter Writer wird durch den Entity-Lock abgehalten.
+# A second writer is held off by the entity lock.
 held = locks.acquire("obsidian:entity:router-speedport-smart4",
                      agent="other-writer", owner="process")
 try:
@@ -173,12 +173,12 @@ try:
 finally:
     locks.release(held)
 
-# Nach Freigabe kann der gleich starke, neu gemessene Wert historisiert werden.
+# After release, the equally strong, freshly measured value can be historicized.
 knowledge.approve(second["candidate_id"], vault_root=_VAULT,
                   task_id=task_id, expected_sha256=file_hash(note))
 payload_text = note.read_text(encoding="utf-8")
 check('"status": "superseded"' in payload_text and "12.0.2" in payload_text,
-      "Alter Messwert muss historisiert und neuer Wert aktuell sein")
+      "Old measurement must be historicized and the new value current")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

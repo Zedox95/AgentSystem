@@ -1,4 +1,4 @@
-"""Deterministische Negativ- und Positivtests für das Completion-Gate."""
+"""Deterministic negative and positive tests for the completion gate."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(r"C:\AgentSystem")
+ROOT = Path(__file__).resolve().parent.parent
 TMP = Path(tempfile.mkdtemp(prefix="agentsys-completion-"))
 os.environ["AGENTSYSTEM_ROOT"] = str(TMP / "system")
 os.environ["AGENTSYSTEM_VAULT"] = str(TMP / "vault")
@@ -27,9 +27,9 @@ def check(condition: bool, message: str) -> None:
 def expect_block(task_id: str, expected: str) -> None:
     try:
         ledger.set_state(task_id, "COMMITTED")
-        FAILURES.append(f"Commit hätte blockieren müssen: {expected}")
+        FAILURES.append(f"Commit should have been blocked: {expected}")
     except ValueError as error:
-        check(expected in str(error), f"Blockgrund {expected!r} fehlt: {error}")
+        check(expected in str(error), f"Block reason {expected!r} missing: {error}")
 
 
 def advance(task_id: str, *, stop: str = "INDEPENDENT_VERIFY") -> None:
@@ -43,88 +43,88 @@ def advance(task_id: str, *, stop: str = "INDEPENDENT_VERIFY") -> None:
 
 
 task_id = ledger.create_task(
-    goal="Completion-Gate testen", risk_class="R2",
-    target_resource="test:completion", desired_state="Gate ist wirksam",
-    planned_method="isolierter Test", alternative_method="Rollback im Temp-Verzeichnis",
-    acceptance_criteria="Negativtests blockieren, Positivtest committed",
-    rollback_plan="Temp-Verzeichnis entfernen",
+    goal="Test the completion gate", risk_class="R2",
+    target_resource="test:completion", desired_state="Gate is effective",
+    planned_method="isolated test", alternative_method="rollback in the temp directory",
+    acceptance_criteria="negative tests block, positive test commits",
+    rollback_plan="remove the temp directory",
 )
 
 try:
-    knowledge.review_task(task_id, decision="none", reason="Absichtlich zu früh")
-    FAILURES.append("Knowledge Review vor INDEPENDENT_VERIFY muss blockieren")
+    knowledge.review_task(task_id, decision="none", reason="Deliberately too early")
+    FAILURES.append("Knowledge Review before INDEPENDENT_VERIFY must block")
 except ValueError as error:
-    check("INDEPENDENT_VERIFY" in str(error), "Frühe Review braucht einen klaren Blockgrund")
+    check("INDEPENDENT_VERIFY" in str(error), "Early review needs a clear block reason")
 
 try:
     ledger.set_state(task_id, "EXECUTING")
-    FAILURES.append("RECEIVED -> EXECUTING muss blockieren")
+    FAILURES.append("RECEIVED -> EXECUTING must block")
 except ValueError as error:
-    check("Ungültiger Zustandswechsel" in str(error), "Transition-Fehler muss verständlich sein")
+    check("Invalid state transition" in str(error), "Transition error must be understandable")
 
 advance(task_id)
-expect_block(task_id, "Kein abgeschlossener Run")
+expect_block(task_id, "No completed run")
 
 run_no_evidence = ledger.start_run(task_id, "implementation-agent", "test", "none", "R2")
-ledger.finish_run(run_no_evidence, "PASS", change_summary="Änderung")
-expect_block(task_id, "Objective-Test-Evidenz fehlt")
+ledger.finish_run(run_no_evidence, "PASS", change_summary="Change")
+expect_block(task_id, "Objective test evidence missing")
 
 run_failed = ledger.start_run(task_id, "implementation-agent", "test", "failed", "R2")
 ledger.finish_run(
-    run_failed, "FAIL", change_summary="Änderung", objective_tests="Messung vorhanden",
-    verification="PASS: Text ist absichtlich widersprüchlich",
+    run_failed, "FAIL", change_summary="Change", objective_tests="Measurement present",
+    verification="PASS: text is deliberately contradictory",
 )
 expect_block(task_id, "outcome=PASS")
 
 run_bad_verdict = ledger.start_run(task_id, "implementation-agent", "test", "verdict", "R2")
 ledger.finish_run(
-    run_bad_verdict, "PASS", change_summary="Änderung", objective_tests="Messung vorhanden",
-    verification="Verifier meldete später PASS",
+    run_bad_verdict, "PASS", change_summary="Change", objective_tests="Measurement present",
+    verification="Verifier reported PASS later",
 )
-expect_block(task_id, "Verifikation fehlt")
+expect_block(task_id, "verification missing")
 
 run_good = ledger.start_run(task_id, "implementation-agent", "test", "complete", "R2")
 ledger.finish_run(
-    run_good, "PASS", change_summary="Gate isoliert getestet",
-    objective_tests="Ungültige Übergänge und fehlende Evidenz wurden abgewiesen",
-    verification="PASS: unabhängiger deterministischer Test",
+    run_good, "PASS", change_summary="Gate tested in isolation",
+    objective_tests="Invalid transitions and missing evidence were rejected",
+    verification="PASS: independent deterministic test",
 )
 expect_block(task_id, "Knowledge Review")
 
 review = knowledge.review_task(
     task_id, decision="none",
-    reason="Der isolierte Temp-Test erzeugt kein dauerhaftes Nutzerwissen",
+    reason="The isolated temp test produces no durable user knowledge",
 )
-check(review["decision"] == "none", "Knowledge Review muss none dokumentieren")
+check(review["decision"] == "none", "Knowledge review must document none")
 readiness = ledger.completion_readiness(task_id)
-check(readiness["ready"], f"Vollständiger Task muss commit-ready sein: {readiness}")
+check(readiness["ready"], f"Complete task must be commit-ready: {readiness}")
 
-# Ein später beendeter Run macht die vorherige Review absichtlich veraltet.
+# A later-finished run deliberately makes the previous review stale.
 newer_run = ledger.start_run(task_id, "implementation-agent", "test", "newer", "R2")
 ledger.finish_run(
-    newer_run, "PASS", change_summary="Spätere Änderung",
-    objective_tests="Späterer Objective Test", verification="PASS: späterer Verifier",
+    newer_run, "PASS", change_summary="Later change",
+    objective_tests="Later objective test", verification="PASS: later verifier",
 )
 stale = ledger.completion_readiness(task_id)
-check(not stale["ready"] and any("älter" in item for item in stale["reasons"]),
-      "Ein späterer Run muss die vorherige Knowledge Review ungültig machen")
+check(not stale["ready"] and any("older" in item for item in stale["reasons"]),
+      "A later run must invalidate the previous knowledge review")
 knowledge.review_task(
     task_id, decision="none",
-    reason="Auch der spätere isolierte Run erzeugt kein dauerhaftes Nutzerwissen",
+    reason="The later isolated run also produces no durable user knowledge",
 )
 readiness = ledger.completion_readiness(task_id)
-check(readiness["ready"], f"Erneuerte Review muss commit-ready sein: {readiness}")
+check(readiness["ready"], f"Renewed review must be commit-ready: {readiness}")
 ledger.set_state(task_id, "COMMITTED")
-check(ledger.get_task(task_id)["state"] == "COMMITTED", "Commit muss erfolgreich sein")
+check(ledger.get_task(task_id)["state"] == "COMMITTED", "Commit must be successful")
 
 try:
     ledger.set_state(task_id, "EXECUTING")
-    FAILURES.append("Terminaler COMMITTED-Task darf nicht wieder geöffnet werden")
+    FAILURES.append("A terminal COMMITTED task must not be reopened")
 except ValueError:
     pass
 
 incomplete = ledger.create_task(
-    goal="Unvollständiger Vertrag", risk_class="R1",
+    goal="Incomplete contract", risk_class="R1",
     acceptance_criteria="x", rollback_plan="y",
 )
 advance(incomplete)
@@ -133,10 +133,10 @@ ledger.finish_run(
     incomplete_run, "PASS", change_summary="x", objective_tests="x",
     verification="PASS: test",
 )
-knowledge.review_task(incomplete, decision="none", reason="Keine Fakten")
+knowledge.review_task(incomplete, decision="none", reason="No facts")
 report = ledger.completion_readiness(incomplete)
 check(not report["ready"] and any("Task Contract" in item for item in report["reasons"]),
-      "Unvollständiger R1-Task-Contract muss den Commit blockieren")
+      "An incomplete R1 task contract must block the commit")
 
 print(json.dumps({
     "status": "FAIL" if FAILURES else "PASS",

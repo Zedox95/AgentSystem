@@ -1,7 +1,7 @@
-"""Zentrale Pfade des Agentensystems.
+"""Central paths of the agent system.
 
-Alles andere leitet seine Pfade hierher ab, damit ein Umzug der Control Plane
-an genau einer Stelle nachgezogen werden muss.
+Everything else derives its paths from here, so that relocating the control
+plane only needs to be updated in exactly one place.
 """
 
 from __future__ import annotations
@@ -9,14 +9,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# Der feste Installationsort. Er wird für den Control-Plane-Schutz immer
-# mitgeprüft, damit das Umbiegen von AGENTSYSTEM_ROOT den Schutz nicht aushebelt.
+# The fixed installation location. It is always co-checked for control-plane
+# protection, so that redirecting AGENTSYSTEM_ROOT cannot bypass the protection.
 DEFAULT_ROOT = Path(r"C:\AgentSystem")
 DEFAULT_VAULT_ROOT = Path(os.environ.get(
     "AGENTSYSTEM_VAULT", str(Path.home() / "Documents" / "Obsidian Vault")
 ))
 
-# Erlaubt es, das System für Tests an einen anderen Ort zu legen.
+# Allows the system to be placed elsewhere for tests.
 ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", str(DEFAULT_ROOT))).resolve()
 
 CLAUDE_DIR = ROOT / ".claude"
@@ -51,8 +51,8 @@ SKILL_CANDIDATES_DIR = STATE_DIR / "skill-candidates"
 LEDGER_DB = STATE_DIR / "ledger.sqlite"
 CHECKPOINT_FILE = STATE_DIR / "checkpoint.json"
 
-# Relativpfade, die die Sicherheitsgrenze des Systems bilden. Änderungen daran
-# laufen nur über den regulären Wartungsablauf, nie beiläufig.
+# Relative paths that form the system's security boundary. Changes to these
+# only happen through the regular maintenance workflow, never incidentally.
 _CONTROL_PLANE_RELATIVE = (
     ".claude/settings.json",
     ".claude/settings.local.json",
@@ -63,7 +63,7 @@ _CONTROL_PLANE_RELATIVE = (
 
 
 def _control_plane_paths() -> tuple[Path, ...]:
-    """Geschützte Pfade unter der aktiven *und* der festen Wurzel."""
+    """Protected paths under the active *and* the fixed root."""
     roots = {ROOT, DEFAULT_ROOT}
     return tuple(root / relative for root in roots for relative in _CONTROL_PLANE_RELATIVE)
 
@@ -72,7 +72,7 @@ CONTROL_PLANE = _control_plane_paths()
 
 
 def ensure_dirs() -> None:
-    """Legt die Zustandsverzeichnisse an, falls sie fehlen."""
+    """Creates the state directories if they are missing."""
     for directory in (
         STATE_DIR, RUNS_DIR, EXPERIENCES_DIR, BASELINES_DIR,
         LOCKS_DIR, KNOWN_GOOD_DIR, SCHEMAS_DIR, LOGS_DIR,
@@ -83,7 +83,7 @@ def ensure_dirs() -> None:
 
 
 def is_control_plane(path: str | Path) -> bool:
-    """True, wenn der Pfad zur geschützten Control Plane gehört."""
+    """True if the path belongs to the protected control plane."""
     try:
         candidate = Path(path).resolve()
     except (OSError, ValueError):
