@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", r"C:\AgentSystem"))
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "bin"))
 
 from agentsys import knowledge, ledger  # noqa: E402
@@ -77,7 +77,7 @@ def memory_read_managed_note(arguments: dict[str, Any]) -> dict[str, Any]:
         raise ContractError("Note does not exist or is not AgentSystem-managed")
     path, meta, note_text = found
     payload = knowledge._managed_payload(note_text, meta["entity"])
-    safe_payload = json.loads(ledger.redact(json.dumps(payload, ensure_ascii=False)) or "{}")
+    safe_payload = ledger.redact_structured(payload)
     return _result({
         "source_path": requested, "source_sha256": file_hash(path), "metadata": meta,
         "managed_facts": safe_payload.get("facts", {}),

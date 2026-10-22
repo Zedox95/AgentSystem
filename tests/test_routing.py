@@ -46,37 +46,37 @@ def check(condition: bool, message: str) -> None:
 # --------------------------------------------------------------------------
 CASES: tuple[tuple[str, str, str, str | None], ...] = (
     # Routine — inquiring, nothing is touched
-    ("Zeig mir den Status des Agentensystems", "sonnet", "R0", None),
-    ("Lies mir die Datei config.yaml vor", "sonnet", "R0", None),
-    ("Wie viele Dateien liegen im Projektverzeichnis?", "sonnet", "R0", None),
+    ("Zeig mir den Status des Agentensystems", "balanced", "R0", None),
+    ("Lies mir die Datei config.yaml vor", "balanced", "R0", None),
+    ("Wie viele Dateien liegen im Projektverzeichnis?", "balanced", "R0", None),
 
     # Action before object: checking is not a change, not even for drivers
-    ("Pruefe meinen PC auf Fehler und veraltete Treiber", "sonnet", "R0", "windows"),
-    ("Zeig mir alle laufenden Dienste", "sonnet", "R0", "windows"),
+    ("Pruefe meinen PC auf Fehler und veraltete Treiber", "balanced", "R0", "windows"),
+    ("Zeig mir alle laufenden Dienste", "balanced", "R0", "windows"),
 
     # Real changes
-    ("Installiere den neuen NVIDIA-Treiber", "sonnet", "R2", "windows"),
-    ("Aktiviere die Firewall-Regel fuer Port 25565", "sonnet", "R2", None),
-    ("Aktualisiere den Grafiktreiber", "sonnet", "R2", "windows"),
+    ("Installiere den neuen NVIDIA-Treiber", "balanced", "R2", "windows"),
+    ("Aktiviere die Firewall-Regel fuer Port 25565", "balanced", "R2", None),
+    ("Aktualisiere den Grafiktreiber", "balanced", "R2", "windows"),
 
     # Separable verbs: the particle sits at the end of the sentence
-    ("Starte den Druckerspooler neu", "sonnet", "R2", "windows"),
-    ("Fahre die virtuelle Maschine herunter", "sonnet", "R1", "infrastruktur"),
+    ("Starte den Druckerspooler neu", "balanced", "R2", "windows"),
+    ("Fahre die virtuelle Maschine herunter", "balanced", "R1", "infrastruktur"),
 
     # Compounds
-    ("Deaktiviere den Systemdienst Spooler", "sonnet", "R2", "windows"),
+    ("Deaktiviere den Systemdienst Spooler", "balanced", "R2", "windows"),
 
     # Hard to reverse
-    ("Loesche die Partition D und formatiere sie neu", "opus", "R3", None),
-    ("Entferne die alten Savegames vom ARK-Server", "opus", "R3", "gaming"),
-    ("Setze den Router auf Werkseinstellungen zurueck", "opus", "R3", "browser"),
+    ("Loesche die Partition D und formatiere sie neu", "reasoning", "R3", None),
+    ("Entferne die alten Savegames vom ARK-Server", "reasoning", "R3", "gaming"),
+    ("Setze den Router auf Werkseinstellungen zurueck", "reasoning", "R3", "browser"),
 
     # Reasoning work — inflection must be caught
-    ("Vergleiche Proxmox und Docker und empfiehl mir eins", "opus", "R0", "infrastruktur"),
-    ("Warum startet der Minecraft-Server nicht mehr?", "opus", "R0", "gaming"),
+    ("Vergleiche Proxmox und Docker und empfiehl mir eins", "reasoning", "R0", "infrastruktur"),
+    ("Warum startet der Minecraft-Server nicht mehr?", "reasoning", "R0", "gaming"),
     ("Die Portfreigabe am Router funktioniert nicht, finde die Ursache",
-     "opus", "R0", "browser"),
-    ("Analysiere, wieso die Verbindung dauernd abbricht", "opus", "R0", None),
+     "reasoning", "R0", "browser"),
+    ("Analysiere, wieso die Verbindung dauernd abbricht", "reasoning", "R0", None),
 )
 
 for prompt, expected_model, expected_risk, expected_domain in CASES:
@@ -111,23 +111,23 @@ for edge in ("", "   ", "?" * 300, "ä" * 50, "Lösche\nalles\tsofort"):
 # --------------------------------------------------------------------------
 # Escalation
 # --------------------------------------------------------------------------
-model, effort, _ = routing.escalate("sonnet", verifier_verdict="INCONCLUSIVE")
-check((model, effort) == ("sonnet", "high"),
+model, effort, _ = routing.escalate("balanced", verifier_verdict="INCONCLUSIVE")
+check((model, effort) == ("balanced", "high"),
       f"INCONCLUSIVE must not change the model, was {model}/{effort}")
 
-model, effort, _ = routing.escalate("sonnet", verifier_verdict="FAIL")
-check((model, effort) == ("opus", "high"),
-      f"FAIL must escalate to opus, was {model}/{effort}")
+model, effort, _ = routing.escalate("balanced", verifier_verdict="FAIL")
+check((model, effort) == ("reasoning", "high"),
+      f"FAIL must escalate to reasoning, was {model}/{effort}")
 
-model, effort, _ = routing.escalate("opus", verifier_verdict="FAIL")
-check((model, effort) == ("opus", "xhigh"),
-      f"Already opus: raise effort instead of switching model, was {model}/{effort}")
+model, effort, _ = routing.escalate("reasoning", verifier_verdict="FAIL")
+check((model, effort) == ("reasoning", "xhigh"),
+      f"Already reasoning: raise effort instead of switching model, was {model}/{effort}")
 
-model, effort, _ = routing.escalate("sonnet", failed_attempts=2)
-check(model == "opus", "Two failed attempts must escalate")
+model, effort, _ = routing.escalate("balanced", failed_attempts=2)
+check(model == "reasoning", "Two failed attempts must escalate")
 
-model, effort, _ = routing.escalate("sonnet", verifier_verdict="PASS")
-check(model == "sonnet", "PASS must not escalate")
+model, effort, _ = routing.escalate("balanced", verifier_verdict="PASS")
+check(model == "balanced", "PASS must not escalate")
 
 # --------------------------------------------------------------------------
 # The hook as a real process
@@ -167,7 +167,7 @@ check(not payload, "For a purely routine task the hook should stay silent")
 
 code, payload = run_hook("Warum funktioniert die Netzwerkverbindung nicht mehr?")
 context = (payload or {}).get("hookSpecificOutput", {}).get("additionalContext", "")
-check("opus" in context, "For an open-ended question, opus must be recommended")
+check("reasoning" in context, "For an open-ended question, reasoning must be recommended")
 
 # --------------------------------------------------------------------------
 print(json.dumps({

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(os.environ.get("AGENTSYSTEM_ROOT", r"C:\AgentSystem"))
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "bin"))
 
 from agentsys import knowledge, ledger  # noqa: E402
@@ -46,8 +46,7 @@ def build_snapshot(vault_root: Path = knowledge.DEFAULT_VAULT) -> dict[str, Any]
             "metadata": metadata,
             "managed_facts": knowledge._managed_payload(text, metadata["entity"]).get("facts", {}),
         }
-        redacted = ledger.redact(json.dumps(payload, ensure_ascii=False, default=str)) or "{}"
-        notes.append(_scrub_sensitive(json.loads(redacted)))
+        notes.append(_scrub_sensitive(ledger.redact_structured(payload)))
     notes.sort(key=lambda item: (str(item["metadata"].get("entity", "")), item["source_path"]))
     return {
         "schema_version": 1,

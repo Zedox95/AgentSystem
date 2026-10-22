@@ -1,8 +1,10 @@
 ---
 name: preflight-change
 description: Prepares a system change in a controlled way - clarify the goal and target resource, capture the current state, determine risk class R0-R3, choose method and alternative, set a resource lock, create baseline and backup, and record acceptance criteria and rollback plan. Use before any change from R1 up, before anything is altered.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Preflight before a change
 
@@ -27,7 +29,7 @@ and Pterodactyl: API state. The raw output is the baseline.
 
 ## 3. Determine risk class
 
-Per AGENTS.md section 5. When in doubt, use the higher class. **R3 requires
+Per the shared policy Risk Classes. When in doubt, use the higher class. **R3 requires
 the user's explicit approval before you proceed** — ask, don't assume.
 
 ## 4. Choose method and alternative
@@ -35,18 +37,18 @@ the user's explicit approval before you proceed** — ask, don't assume.
 Check experience first:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key <task-type>
+python bin/agentctl.py exp best --key <task-type>
 ```
 
 If there's a `VERIFIED` method with a matching environment, use it.
-Otherwise choose per the preference in AGENTS.md section 10 and justify the
+Otherwise choose per the preference in the shared policy Efficiency and failure handling and justify the
 choice. **Always** name an alternative — it's needed when the first method
 fails, and it prevents blind retries.
 
 ## 5. Create the task contract
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py task new --goal "<goal>" --risk R2 --resource "<lock-id>" --desired-state "<desired state>" --method "<method>" --alternative "<alternative>" --acceptance "<measurable criteria>" --rollback "<rollback path>"
+python bin/agentctl.py task new --goal "<goal>" --risk R2 --resource "<lock-id>" --desired-state "<desired state>" --method "<method>" --alternative "<alternative>" --acceptance "<measurable criteria>" --rollback "<rollback path>"
 ```
 
 The command exits 1 if acceptance criteria or a rollback plan are missing
@@ -55,7 +57,7 @@ for R2 or R3. That's not a formality — it's a stop signal.
 ## 6. Set the lock
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py lock acquire --resource "<lock-id>" --agent <agent> --task-id <task-id>
+python bin/agentctl.py lock acquire --resource "<lock-id>" --agent <agent> --task-id <task-id>
 ```
 
 If the lock fails, another process is working on the same resource. Do
@@ -69,7 +71,7 @@ At R1, the noted current output is enough. From **R2** up, a restorable
 backup is mandatory:
 
 - Files and configuration: copy with a SHA256 manifest under
-  `C:\AgentSystem-Backups\<date>-<purpose>\`
+  `the configured repository-Backups\<date>-<purpose>\`
 - Registry: `reg export` of the affected key
 - Proxmox: snapshot
 - Pterodactyl: backup via the API
@@ -81,10 +83,10 @@ check that the files exist and the hashes match.
 ## 8. Advance the state
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state PREFLIGHT
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state LOCKED
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state BASELINED
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state BACKED_UP
+python bin/agentctl.py task state --task-id <id> --state PREFLIGHT
+python bin/agentctl.py task state --task-id <id> --state LOCKED
+python bin/agentctl.py task state --task-id <id> --state BASELINED
+python bin/agentctl.py task state --task-id <id> --state BACKED_UP
 ```
 
 ## Abort conditions

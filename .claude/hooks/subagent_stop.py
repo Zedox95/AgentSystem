@@ -21,7 +21,7 @@ VALID_STATUS = ("PASS", "FAIL", "INCONCLUSIVE")
 # Subagents for which the strict format applies.
 STRICT_AGENTS = (
     "verification-agent", "windows-agent", "infrastructure-agent",
-    "browser-agent", "gaming-agent", "implementation-agent",
+    "browser-agent", "gaming-agent", "implementation-agent", "research-agent",
 )
 
 

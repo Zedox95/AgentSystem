@@ -17,6 +17,7 @@ import sqlite3
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from . import paths
@@ -146,14 +147,46 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+_SENSITIVE_KEYS = {"password", "passwd", "passwort", "token", "api_key", "apikey",
+                   "access_token", "refresh_token", "secret", "private_key", "credentials", "cookie", "cookies",
+                   "authorization", "bearer", "api_token"}
+
+
+def _sensitive_key(key: Any) -> bool:
+    normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", str(key)).casefold().replace("-", "_")
+    return normalized in _SENSITIVE_KEYS or normalized.endswith(("_api_key", "_api_token", "_private_key"))
+
+
+def redact_structured(value: Any) -> Any:
+    """Redact JSON leaves before serialization; never regex-edit JSON syntax."""
+    if isinstance(value, dict):
+        return {key: ("<REDACTED>" if _sensitive_key(key)
+                      else redact_structured(item)) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redact_structured(item) for item in value]
+    if isinstance(value, str):
+        return redact(value)
+    return value
+
+
 def new_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:12]}"
+
+
+class _ClosingConnection(sqlite3.Connection):
+    """A transaction context also releases its handle on Windows."""
+
+    def __exit__(self, *args: Any) -> bool | None:
+        try:
+            return super().__exit__(*args)
+        finally:
+            self.close()
 
 
 def connect() -> sqlite3.Connection:
     """Opens the ledger database and ensures the schema exists."""
     paths.ensure_dirs()
-    connection = sqlite3.connect(paths.LEDGER_DB, timeout=10.0)
+    connection = sqlite3.connect(paths.LEDGER_DB, timeout=10.0, factory=_ClosingConnection)
     connection.row_factory = sqlite3.Row
     connection.executescript(_SCHEMA)
     row = connection.execute("SELECT version FROM schema_info").fetchone()
@@ -440,22 +473,53 @@ def finish_run(run_id: str, outcome: str, **fields: Any) -> None:
     log_event("RUN_FINISHED", run_id=run_id, detail={"outcome": outcome})
 
 
-def write_checkpoint(data: dict[str, Any]) -> None:
-    """Saves the resume point for restart or quota exhaustion."""
+def checkpoint_path(session_id: str | None = None) -> Path:
+    """Opaque provider IDs never become filesystem paths. None is legacy CLI scope."""
+    if session_id is None:
+        return paths.CHECKPOINT_FILE
+    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 512:
+        raise ValueError("A non-empty session ID of at most 512 characters is required")
+    import hashlib
+    digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
+    return paths.CHECKPOINTS_DIR / f"{digest}.json"
+
+
+def write_checkpoint(data: dict[str, Any], session_id: str | None = None) -> None:
+    """Atomically save one session. Never replace another session's checkpoint."""
+    import tempfile
+    target = checkpoint_path(session_id)
     paths.ensure_dirs()
-    payload = dict(data)
-    payload["written_utc"] = utcnow()
-    payload["pid"] = os.getpid()
-    temporary = paths.CHECKPOINT_FILE.with_suffix(".tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(paths.CHECKPOINT_FILE)
+    if not isinstance(data, dict):
+        raise ValueError("Checkpoint must be an object")
+    payload = redact_structured(data)
+    if len(json.dumps(payload, ensure_ascii=False).encode("utf-8")) > 65536:
+        raise ValueError("Checkpoint exceeds 64 KiB; save evidence in referenced artifacts")
+    payload.update(written_utc=utcnow(), pid=os.getpid())
+    if session_id is not None:
+        payload["session_id"] = session_id
+    handle, name = tempfile.mkstemp(prefix=target.stem + ".", suffix=".tmp", dir=target.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
-def read_checkpoint() -> dict[str, Any] | None:
-    if not paths.CHECKPOINT_FILE.exists():
+def read_checkpoint(session_id: str | None = None) -> dict[str, Any] | None:
+    target = checkpoint_path(session_id)
+    if not target.exists():
         return None
     try:
-        return json.loads(paths.CHECKPOINT_FILE.read_text(encoding="utf-8"))
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            return None
+        if session_id is not None and payload.get("session_id") != session_id:
+            return None
+        return payload
     except (json.JSONDecodeError, OSError):
         return None
 

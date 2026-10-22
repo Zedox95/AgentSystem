@@ -216,12 +216,17 @@ def cmd_env(args: argparse.Namespace) -> int:
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> int:
-    from agentsys import paths
     if args.action == "clear":
-        paths.CHECKPOINT_FILE.unlink(missing_ok=True)
+        ledger.checkpoint_path(args.session_id).unlink(missing_ok=True)
         out({"cleared": True})
         return 0
-    out(ledger.read_checkpoint() or {"checkpoint": None})
+    if args.action == "save":
+        required(args.session_id, "--session-id")
+        payload = json.loads(Path(required(args.file, "--file")).read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Checkpoint must be a JSON object")
+        ledger.write_checkpoint(payload, args.session_id)
+    out(ledger.read_checkpoint(args.session_id) or {"checkpoint": None})
     return 0
 
 
@@ -453,7 +458,9 @@ def build_parser() -> argparse.ArgumentParser:
     env.set_defaults(func=cmd_env)
 
     checkpoint = sub.add_parser("checkpoint")
-    checkpoint.add_argument("action", choices=["show", "clear"])
+    checkpoint.add_argument("action", choices=["show", "save", "clear"])
+    checkpoint.add_argument("--session-id")
+    checkpoint.add_argument("--file")
     checkpoint.set_defaults(func=cmd_checkpoint)
 
     brain = sub.add_parser("knowledge", help="Second-Brain-Kandidaten und Suche")

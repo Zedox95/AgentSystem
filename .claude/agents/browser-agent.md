@@ -48,4 +48,4 @@ privacy-friendly way (reject non-essential).
 Router changes to WAN, firewall, or remote access are **R3** — lockout risk. Never without an
 exported prior configuration and explicit approval.
 
-Respond in the format from AGENTS.md section 24.
+Respond in the format from the shared policy Result Format.

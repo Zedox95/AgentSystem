@@ -51,4 +51,4 @@ The server is only running once it actually responds: port reachable, handshake 
 critical errors in the startup log, expected mod and plugin list loaded, player join possible.
 "Container is running" is not proof.
 
-Respond in the format from AGENTS.md section 24.
+Respond in the format from the shared policy Result Format.

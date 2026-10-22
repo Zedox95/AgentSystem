@@ -16,7 +16,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .ledger import redact
+from .ledger import redact, redact_structured
 
 SCHEMA_VERSION = 1
 
@@ -73,7 +73,7 @@ def file_hash(path: str | Path) -> str:
 
 def ensure_no_secret(value: Any) -> None:
     serialized = canonical_json(value)
-    if redact(serialized) != serialized:
+    if redact_structured(value) != value or redact(serialized) != serialized:
         raise ContractError("Das Objekt enthaelt ein moegliches Secret und wird abgelehnt")
 
 

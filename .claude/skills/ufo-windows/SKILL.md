@@ -1,8 +1,10 @@
 ---
 name: ufo-windows
 description: Operates the Windows UI via UFO² through the command line - list windows, read controls, click, type text, send keys, scroll, run step sequences - and independently verifies every action via the UI Automation interface. Use when a Windows task genuinely requires a graphical interface and no API, cmdlet, or CLI can solve it more reliably.
-allowed-tools: Bash(C:\UFO\.venv\Scripts\python.exe C:\AgentSystem\adapters\ufo\ufoctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Windows GUI via UFO²
 
@@ -43,7 +45,7 @@ API.
 ## Invocation
 
 ```bash
-C:\UFO\.venv\Scripts\python.exe C:\AgentSystem\adapters\ufo\ufoctl.py windows
+"<configured-UFO-Python>" adapters\ufo\ufoctl.py windows
 ```
 
 Every call is self-contained: resolve window, select, act, read back. UFO's
@@ -145,5 +147,5 @@ They aren't reproducible and break with every layout change.
 ## Recording experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp record --key windows.gui.<task> --method "ufoctl:<command>" --success --duration <ms> --agent windows-agent
+python bin/agentctl.py exp record --key windows.gui.<task> --method "ufoctl:<command>" --success --duration <ms> --agent windows-agent
 ```

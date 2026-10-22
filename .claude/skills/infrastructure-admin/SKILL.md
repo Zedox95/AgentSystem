@@ -1,8 +1,10 @@
 ---
 name: infrastructure-admin
 description: Chooses the most reliable route for an infrastructure task - Proxmox API, qm and pct, SSH and Bash, Docker, Pterodactyl API, Ansible, or OpenTofu - and knows the actual state of this environment. Use for Linux servers, VMs, containers, game server hosting, network services, and infrastructure diagnostics.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Routing infrastructure tasks correctly
 
@@ -93,6 +95,6 @@ actually responds**.
 ## Experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key infra.<task-type>
-python C:\AgentSystem\bin\agentctl.py exp record --key infra.<task-type> --method "proxmox-api:<endpoint>" --success --duration <ms>
+python bin/agentctl.py exp best --key infra.<task-type>
+python bin/agentctl.py exp record --key infra.<task-type> --method "proxmox-api:<endpoint>" --success --duration <ms>
 ```

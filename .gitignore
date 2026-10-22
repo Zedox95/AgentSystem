@@ -23,3 +23,9 @@ id_rsa
 id_ed25519
 credentials.json
 auth.json
+
+# Per-user generated provider adapters and imported data.
+.agentsystem.local.json
+.agents/
+.codex/
+*.chatgpt-export.json

@@ -24,9 +24,8 @@ that model has already read the prompt. It acts in two places:
 
 ## Model tiers
 
-Deliberately an alias, not a version ID: `sonnet` and `opus` always point to
-the current generation. That way nothing goes stale, and no specific model
-is hardwired.
+balanced and reasoning describe capabilities, not provider model IDs.
+The host resolves an appropriate available subscription model and effort.
 """
 
 from __future__ import annotations
@@ -34,8 +33,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-ROUTINE = "sonnet"      # execution, known territory, measurable
-STRONG = "opus"         # ambiguity, planning, critical decisions
+ROUTINE = "balanced"    # provider-neutral capability hint, not a model ID
+STRONG = "reasoning"    # resolved against the current subscription, never an API fallback
 
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 
@@ -194,13 +193,14 @@ def classify(prompt: str) -> Routing:
             reasons.append(f"multiple domains equally strong ({hits[0][0]}/{hits[1][0]})")
 
     # --- Risk: action before object ------------------------------------
-    mutates = bool(MUTATION.search(text) or MUTATION_SEPARABLE.search(text))
+    mutates = bool(MUTATION.search(text) or MUTATION_SEPARABLE.search(text)
+                   or re.search(r"\b(?:install|uninstall|remove|create|configure|restart|reboot|migrate|modify|change|reset)\b", text, re.I))
     reads_only = bool(READONLY_VERB.search(text))
 
-    if mutates and OBJECT_R3.search(text):
+    if mutates and (OBJECT_R3.search(text) or re.search(r"\b(?:disk|partition|database|firmware|bootloader|production|user account)\b", text, re.I)):
         risk = "R3"
         signals["risiko"] = ["mutating verb + critical object"]
-    elif mutates and OBJECT_R2.search(text):
+    elif mutates and (OBJECT_R2.search(text) or re.search(r"\b(?:network|firewall|driver|package|configuration|service)\b", text, re.I)):
         risk = "R2"
         signals["risiko"] = ["mutating verb + relevant object"]
     elif mutates:
@@ -212,7 +212,7 @@ def classify(prompt: str) -> Routing:
             reasons.append("read-only despite sensitive objects — no preflight needed")
 
     # --- Thinking requirement -----------------------------------------------
-    ambiguous = bool(AMBIGUITY.search(text))
+    ambiguous = bool(AMBIGUITY.search(text) or re.search(r"\b(?:why|compare|recommend|diagnose|investigate|design|architecture|inconsistent)\b", text, re.I))
     routine = bool(ROUTINE_SIGNALS.search(text))
     explicit = bool(EXPLICIT_INSTRUCTION.search(text))
     if ambiguous:

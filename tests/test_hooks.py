@@ -263,7 +263,8 @@ ledger.set_state(r1, "COMMITTED")
 open_task = ledger.create_task("Offener Testvorgang", "R2")
 for state in ("PLANNED", "PREFLIGHT", "LOCKED", "BASELINED", "BACKED_UP", "EXECUTING"):
     ledger.set_state(open_task, state)
-code, out, _ = run_hook("session_start.py", {"hook_event_name": "SessionStart"})
+ledger.log_event("TASK_SESSION", task_id=open_task, session_id="test-session")
+code, out, _ = run_hook("session_start.py", {"hook_event_name": "SessionStart", "session_id": "test-session"})
 check(code == 0, "session_start must never block")
 context = json.loads(out).get("hookSpecificOutput", {}).get("additionalContext", "") if out.strip() else ""
 check(open_task in context, "Open task must appear in the SessionStart context")
