@@ -1,8 +1,10 @@
 ---
 name: verify-change
 description: Objectively checks whether a change that was made actually took effect - chooses the appropriate measurable verification method for Windows, Linux, browser, Proxmox, or Pterodactyl, runs it, and then hands off to the read-only verification-agent. Use after every change from R1 up, before reporting success.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Verifying a change
 
@@ -59,6 +61,8 @@ At least one negative check belongs to every R2 verification.
 
 ## Independent verification
 
+Reuse unchanged test evidence within the task. Independently reproduce critical acceptance checks and likely side effects; repeat broader tests only after relevant changes, failures or unresolved gaps.
+
 Task the `verification-agent` with: original goal, task contract, acceptance
 criteria, before state, after state, raw evidence.
 
@@ -72,21 +76,21 @@ executor.
 ## Closing out
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state OBJECTIVE_TEST
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state INDEPENDENT_VERIFY
-python C:\AgentSystem\bin\agentctl.py run finish --run-id <run> --outcome PASS --change "<actual change>" --tests "<what was measured>" --verification "PASS: <verifier and evidence>"
-python C:\AgentSystem\bin\agentctl.py knowledge review --task-id <id> --decision <none|captured|deferred> --reason "<result of the knowledge check>"
-python C:\AgentSystem\bin\agentctl.py task readiness --task-id <id>
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state COMMITTED
-python C:\AgentSystem\bin\agentctl.py lock release --resource "<lock-id>" --token <token>
+python bin/agentctl.py task state --task-id <id> --state OBJECTIVE_TEST
+python bin/agentctl.py task state --task-id <id> --state INDEPENDENT_VERIFY
+python bin/agentctl.py run finish --run-id <run> --outcome PASS --change "<actual change>" --tests "<what was measured>" --verification "PASS: <verifier and evidence>"
+python bin/agentctl.py knowledge review --task-id <id> --decision <none|captured|deferred> --reason "<result of the knowledge check>"
+python bin/agentctl.py task readiness --task-id <id>
+python bin/agentctl.py task state --task-id <id> --state COMMITTED
+python bin/agentctl.py lock release --resource "<lock-id>" --token <token>
 ```
 
 On confirmed success, the method used may be recorded as experience and —
 after `PASS` — promoted to `VERIFIED`:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp record --key <task-type> --method <method> --success --duration <ms> --agent <agent>
-python C:\AgentSystem\bin\agentctl.py exp promote --key <task-type> --method <method> --revalidate-when "<when to recheck>"
+python bin/agentctl.py exp record --key <task-type> --method <method> --success --duration <ms> --agent <agent>
+python bin/agentctl.py exp promote --key <task-type> --method <method> --revalidate-when "<when to recheck>"
 ```
 
 ## Result

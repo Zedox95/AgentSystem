@@ -1,8 +1,10 @@
 ---
 name: windows-admin
 description: Chooses the most reliable route for a Windows task - native API and CIM, PowerShell, COM, UFO² UI Automation, or visual computer use as a last resort - and knows this machine's specifics such as PowerShell 5.1 without pwsh and the lack of elevation. Use for system diagnostics, drivers, services, registry, Windows settings, and GUI automation on this PC.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Routing Windows tasks correctly
 
@@ -23,7 +25,7 @@ These points are measured, not assumed:
 Check experience first:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key windows.<task-type>
+python bin/agentctl.py exp best --key windows.<task-type>
 ```
 
 Without a matching entry, this order applies — as a preference, not a

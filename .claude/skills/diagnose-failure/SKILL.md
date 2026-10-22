@@ -1,9 +1,11 @@
 ---
 name: diagnose-failure
 description: Systematic root-cause analysis after a failure - capture error data, determine the error class, form hypotheses and refute them individually, check version and configuration, query the experience store, then deliberately decide on a second attempt or a method change. Use when a command, service, server, or change has failed, instead of blindly retrying it.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 context: fork
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Root cause analysis
 
@@ -36,7 +38,7 @@ different syntax.
 ## 3. Check version assumptions
 
 The most common mistake is an assumption made from memory. Check in this
-order (AGENTS.md section 3): installed version → local `--help` output →
+order (the shared policy Evidence and sources): installed version → local `--help` output →
 actual configuration file → local README → installed source code → current
 official primary documentation.
 
@@ -56,8 +58,8 @@ That's usually where the real cause is hiding.
 ## 5. Query experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp list
-python C:\AgentSystem\bin\agentctl.py exp best --key <task-type>
+python bin/agentctl.py exp list
+python bin/agentctl.py exp best --key <task-type>
 ```
 
 Is the error known? Is there a method that has demonstrably worked here —
@@ -67,7 +69,7 @@ and does its environment still match?
 
 - **Cause found and correctable** → second attempt with corrected cause, same
   method
-- **Same error again** → change method per AGENTS.md section 10
+- **Same error again** → change method per the shared policy Efficiency and failure handling
 - **The alternative also fails** → another agent or cross-model check via
   Codex
 - **State unclear or partially changed** → rollback via `rollback-change`
@@ -80,7 +82,7 @@ second time. That's the signal to change method, not to retry a third time.
 ## 7. Record it
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp record --key <task-type> --method <method> --error "<original error>" --root-cause "<cause found>" --agent <agent>
+python bin/agentctl.py exp record --key <task-type> --method <method> --error "<original error>" --root-cause "<cause found>" --agent <agent>
 ```
 
 A method that reproducibly fails on the same cause belongs on `DEPRECATED` —

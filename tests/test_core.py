@@ -18,7 +18,7 @@ from pathlib import Path
 _TMP = tempfile.mkdtemp(prefix="agentsys-test-")
 os.environ["AGENTSYSTEM_ROOT"] = _TMP
 
-sys.path.insert(0, str(Path(r"C:\AgentSystem") / "bin"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bin"))
 
 from agentsys import experience, fingerprint, knowledge, ledger, locks, paths, policy  # noqa: E402
 

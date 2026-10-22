@@ -1,8 +1,10 @@
 ---
 name: browser-admin
 description: Chooses the most reliable route for a web-UI task - API first, otherwise Playwright CLI for repeatable workflows or Playwright MCP for exploratory work, visual computer use only as a fallback - and uses accessibility-based localization instead of pixel coordinates. Use for router web UIs, Proxmox web UI, Pterodactyl panel, forms, downloads, and browser diagnostics.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Routing browser tasks correctly
 
@@ -81,8 +83,8 @@ representation.
 ## Experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp best --key browser.<task-type>
-python C:\AgentSystem\bin\agentctl.py exp record --key browser.<task-type> --method "playwright-cli:<script>" --success --duration <ms>
+python bin/agentctl.py exp best --key browser.<task-type>
+python bin/agentctl.py exp record --key browser.<task-type> --method "playwright-cli:<script>" --success --duration <ms>
 ```
 
 A workflow that ran the same way twice is a candidate for a fixed Playwright

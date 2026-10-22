@@ -7,13 +7,18 @@ plane only needs to be updated in exactly one place.
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 
 # The fixed installation location. It is always co-checked for control-plane
 # protection, so that redirecting AGENTSYSTEM_ROOT cannot bypass the protection.
-DEFAULT_ROOT = Path(r"C:\AgentSystem")
+DEFAULT_ROOT = Path(__file__).resolve().parents[2]
+_PROFILE_PATH = DEFAULT_ROOT / ".agentsystem.local.json"
+_PROFILE = json.loads(_PROFILE_PATH.read_text(encoding="utf-8")) if _PROFILE_PATH.is_file() else {}
 DEFAULT_VAULT_ROOT = Path(os.environ.get(
-    "AGENTSYSTEM_VAULT", str(Path.home() / "Documents" / "Obsidian Vault")
+    "AGENTSYSTEM_VAULT", _PROFILE.get("vault") or (
+        str(DEFAULT_ROOT / "state/disconnected-vault") if "vault" in _PROFILE
+        else str(Path.home() / "Documents" / "Obsidian Vault"))
 ))
 
 # Allows the system to be placed elsewhere for tests.
@@ -50,6 +55,7 @@ SKILL_CANDIDATES_DIR = STATE_DIR / "skill-candidates"
 
 LEDGER_DB = STATE_DIR / "ledger.sqlite"
 CHECKPOINT_FILE = STATE_DIR / "checkpoint.json"
+CHECKPOINTS_DIR = STATE_DIR / "checkpoints"
 
 # Relative paths that form the system's security boundary. Changes to these
 # only happen through the regular maintenance workflow, never incidentally.
@@ -59,6 +65,13 @@ _CONTROL_PLANE_RELATIVE = (
     "AGENTS.md",
     ".claude/hooks",
     "bin/agentsys",
+    ".codex",
+    ".agents/skills",
+    ".agentsystem.local.json",
+    "adapters/codex",
+    "bin/setup_agent.py",
+    "bin/assistantctl.py",
+    "setup.ps1",
 )
 
 
@@ -75,7 +88,7 @@ def ensure_dirs() -> None:
     """Creates the state directories if they are missing."""
     for directory in (
         STATE_DIR, RUNS_DIR, EXPERIENCES_DIR, BASELINES_DIR,
-        LOCKS_DIR, KNOWN_GOOD_DIR, SCHEMAS_DIR, LOGS_DIR,
+        LOCKS_DIR, CHECKPOINTS_DIR, KNOWN_GOOD_DIR, SCHEMAS_DIR, LOGS_DIR,
         KNOWLEDGE_PENDING_DIR, KNOWLEDGE_ACCEPTED_DIR,
         KNOWLEDGE_REJECTED_DIR, METRICS_DIR, SKILL_CANDIDATES_DIR,
     ):

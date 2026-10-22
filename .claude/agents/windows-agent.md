@@ -50,4 +50,4 @@ require the user's explicit approval.
 Read the real state again — service, process, port, registry value, driver version, device code.
 Also check the event log for **new** errors. A successful exit code is not proof.
 
-Respond in the format from AGENTS.md section 24.
+Respond in the format from the shared policy Result Format.

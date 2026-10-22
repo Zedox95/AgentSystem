@@ -20,7 +20,10 @@ def main() -> None:
 
     lines: list[str] = []
 
-    checkpoint = ledger.read_checkpoint()
+    session_id = data.get("session_id")
+    if not isinstance(session_id, str) or not session_id.strip():
+        hooklib.emit_nothing()
+    checkpoint = ledger.read_checkpoint(session_id)
     if checkpoint:
         lines.append(
             "Interrupted process found — checkpoint: "
@@ -33,6 +36,15 @@ def main() -> None:
 
     try:
         open_tasks = ledger.open_tasks()
+        if session_id:
+            with ledger.connect() as connection:
+                own = {row[0] for row in connection.execute(
+                    "SELECT DISTINCT task_id FROM events WHERE session_id = ? AND task_id IS NOT NULL",
+                    (session_id,),
+                )}
+            if checkpoint and checkpoint.get("task_id"):
+                own.add(checkpoint["task_id"])
+            open_tasks = [task for task in open_tasks if task["task_id"] in own]
     except Exception:  # noqa: BLE001
         open_tasks = []
     if open_tasks:
@@ -52,7 +64,7 @@ def main() -> None:
     if held:
         lines.append(f"Active resource locks ({len(held)}):")
         for lock in held[:MAX_LOCKS]:
-            status = "holder running" if lock.get("holder_alive") else "ORPHANED"
+            status = "stale" if lock.get("stale") else "held"
             lines.append(
                 f"  - {lock.get('resource', '?')} ({lock.get('agent', '?')}, {status})"
             )

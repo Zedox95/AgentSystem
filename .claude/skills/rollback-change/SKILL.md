@@ -1,8 +1,10 @@
 ---
 name: rollback-change
 description: Restores a known-good state in a controlled way - verify backup integrity, plan the restore, execute it, objectively verify it, release the lock, and set the ledger to ROLLED_BACK. Use when a change has failed, the verifier reports FAIL, the state is unclear, or a change needs to be reverted.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Controlled rollback
 
@@ -12,8 +14,8 @@ checks before and verification after.
 ## 1. Establish the state before touching anything
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py status
-python C:\AgentSystem\bin\agentctl.py task show --task-id <id>
+python bin/agentctl.py status
+python bin/agentctl.py task show --task-id <id>
 ```
 
 Clarify: which changes actually took effect already? Rolling back something
@@ -22,7 +24,7 @@ that never happened does more damage than it fixes.
 Set the state:
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state ROLLING_BACK
+python bin/agentctl.py task state --task-id <id> --state ROLLING_BACK
 ```
 
 ## 2. Verify backup integrity — before restoring
@@ -40,7 +42,7 @@ over a damaged state makes things worse. Report to the user instead.
 
 | What | Path |
 |---|---|
-| Control repo `C:\AgentSystem` | `git revert <commit>` — not `reset --hard` |
+| Control repo `the configured repository` | `git revert <commit>` — not `reset --hard` |
 | Files/configuration | Restore the copy from the restore point, then compare hashes |
 | Registry | `reg import` of the exported `.reg` file |
 | Windows driver | previous version via Device Manager rollback or `pnputil` with the saved INF |
@@ -71,10 +73,10 @@ installations, orphaned services, open ports, temporary rules.
 ## 6. Close out
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py run finish --run-id <run> --outcome ROLLED_BACK --rollback "<what was reverted>" --tests "<comparison against baseline>"
-python C:\AgentSystem\bin\agentctl.py lock release --resource "<lock-id>" --token <token>
-python C:\AgentSystem\bin\agentctl.py task state --task-id <id> --state ROLLED_BACK
-python C:\AgentSystem\bin\agentctl.py exp record --key <task-type> --method <method> --rolled-back --error "<reason>" --root-cause "<cause>"
+python bin/agentctl.py run finish --run-id <run> --outcome ROLLED_BACK --rollback "<what was reverted>" --tests "<comparison against baseline>"
+python bin/agentctl.py lock release --resource "<lock-id>" --token <token>
+python bin/agentctl.py task state --task-id <id> --state ROLLED_BACK
+python bin/agentctl.py exp record --key <task-type> --method <method> --rolled-back --error "<reason>" --root-cause "<cause>"
 ```
 
 The lock is released only **after** the verified restoration.

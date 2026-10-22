@@ -50,4 +50,4 @@ additionally: server object present, node correct, allocation correct, Wings rea
 running, ports correct, limits correct, no critical startup errors, actual response from the game
 server.
 
-Respond in the format from AGENTS.md section 24.
+Respond in the format from the shared policy Result Format.

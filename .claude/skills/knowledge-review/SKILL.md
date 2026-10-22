@@ -1,8 +1,10 @@
 ---
 name: knowledge-review
 description: Automatically checks before COMMITTED whether a completed AgentSystem task produced durably relevant knowledge for the managed Obsidian vault, deduplicates it via the existing entity search, and records a decision of either captured, deferred, or none. Run for every formal task contract after objective tests and a verifier PASS; the commit gate blocks without this check.
-allowed-tools: Bash(python C:\AgentSystem\bin\agentctl.py *), Read, Grep, Glob, Write
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Knowledge review before commit
 
@@ -41,19 +43,19 @@ Do not capture:
 3. If nothing is durably relevant, document that with a reason:
 
 ```powershell
-python C:\AgentSystem\bin\agentctl.py knowledge review `
+python bin/agentctl.py knowledge review `
   --task-id <task-id> --decision none `
   --reason "Only transient execution; no new durable fact"
 ```
 
 4. For relevant facts, read
-   `C:\AgentSystem\schemas\knowledge-candidate.schema.json`, create small
+   `schemas\knowledge-candidate.schema.json`, create small
    atomic candidates, submit them with `knowledge submit`, and have them
    adopted via `knowledge approve`.
 5. Document all successfully adopted candidate IDs:
 
 ```powershell
-python C:\AgentSystem\bin\agentctl.py knowledge review `
+python bin/agentctl.py knowledge review `
   --task-id <task-id> --decision captured `
   --review-candidate-id kc-... `
   --reason "Confirmed new system state was merged into the existing entity"

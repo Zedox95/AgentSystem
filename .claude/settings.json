@@ -217,7 +217,7 @@
     ],
     "SubagentStop": [
       {
-        "matcher": "windows-agent|infrastructure-agent|browser-agent|gaming-agent|implementation-agent|verification-agent",
+        "matcher": "windows-agent|infrastructure-agent|browser-agent|gaming-agent|implementation-agent|verification-agent|research-agent",
         "hooks": [
           {
             "type": "command",
@@ -247,6 +247,28 @@
             "type": "command",
             "command": "python \"C:/AgentSystem/.claude/hooks/prompt_router.py\"",
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/session_checkpoint.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/AgentSystem/.claude/hooks/session_checkpoint.py\"",
+            "timeout": 10
           }
         ]
       }

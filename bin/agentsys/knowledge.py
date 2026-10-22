@@ -22,9 +22,7 @@ from .contracts import (
     file_hash, utcnow,
 )
 
-DEFAULT_VAULT = Path(os.environ.get(
-    "AGENTSYSTEM_VAULT", str(Path.home() / "Documents" / "Obsidian Vault")
-))
+DEFAULT_VAULT = paths.DEFAULT_VAULT_ROOT
 
 _MANAGED_START = "<!-- agentsystem:facts:start -->"
 _MANAGED_END = "<!-- agentsystem:facts:end -->"
@@ -33,7 +31,7 @@ _REQUIRED_FRONTMATTER = {
     "valid_from", "last_verified",
 }
 _SKIP_PARTS = {".git", ".obsidian", ".trash", "05 Daily Notes"}
-_WORD = re.compile(r"[a-zA-Z0-9_.:-]{2,}")
+_WORD = re.compile(r"[\w.:-]{2,}", re.UNICODE)
 
 
 class KnowledgeConflict(ContractError):
@@ -243,6 +241,10 @@ def _managed_notes(vault_root: str | Path) -> list[tuple[Path, dict[str, str], s
         raise FileNotFoundError(f"Vault nicht gefunden: {root}")
     result = []
     for note in sorted(root.rglob("*.md")):
+        try:
+            note.resolve().relative_to(root)
+        except ValueError:
+            continue
         relative_parts = set(note.relative_to(root).parts)
         if relative_parts & _SKIP_PARTS:
             continue
@@ -275,7 +277,11 @@ def search(vault_root: str | Path, query: str, *, entity: str | None = None,
             continue
         if statuses and meta.get("status") not in statuses:
             continue
-        lower = text.lower()
+        # Search the same metadata/facts boundary exposed by memory_read.
+        # Human prose outside the managed block is not automatic memory.
+        facts = _managed_payload(text, meta["entity"])["facts"]
+        searchable = json.dumps({"metadata": meta, "facts": facts}, ensure_ascii=False)
+        lower = searchable.lower()
         score = 0
         if entity and meta.get("entity") == entity:
             score += 1000
@@ -283,12 +289,10 @@ def search(vault_root: str | Path, query: str, *, entity: str | None = None,
             score += 500
         score += sum(40 for term in terms if term in meta.get("entity", "").lower())
         score += sum(min(lower.count(term), 5) * 10 for term in terms)
-        score += SOURCE_PRIORITY.get(meta.get("source_type", "hypothesis"), 0)
         if score <= 0:
             continue
-        plain = re.sub(r"```.*?```", " ", text, flags=re.DOTALL)
-        plain = re.sub(r"<!--.*?-->", " ", plain, flags=re.DOTALL)
-        plain = " ".join(plain.split())
+        score += SOURCE_PRIORITY.get(meta.get("source_type", "hypothesis"), 0)
+        plain = " ".join(searchable.split())
         # Do not carry credential-like values into search output.
         from .ledger import redact
         excerpt = redact(plain[:1200]) or ""

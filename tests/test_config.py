@@ -38,6 +38,7 @@ KNOWN_HOOK_EVENTS = {
 EXPECTED_AGENTS = {
     "windows-agent", "infrastructure-agent", "browser-agent",
     "gaming-agent", "implementation-agent", "verification-agent",
+    "research-agent",
 }
 
 EXPECTED_SKILLS = {
@@ -45,6 +46,7 @@ EXPECTED_SKILLS = {
     "windows-admin", "browser-admin", "infrastructure-admin", "update-agent-stack",
     "ufo-windows", "playwright-web", "model-routing",
     "knowledge-review",
+    "evidence-research", "obsidian-context", "session-checkpoint", "learning-review", "task-orchestration",
 }
 
 # Externally adopted skills (disable-model-invocation: true, only invocable
@@ -206,6 +208,10 @@ for event, entries in hooks.items():
             check(match is not None, f"{event}: hook command without script path: {command}")
             if match:
                 script = Path(match.group(1))
+                # Validate the shipped template against THIS checkout, never a
+                # maintainer's unrelated installation at the placeholder path.
+                if match.group(1).replace("\\", "/").startswith("C:/AgentSystem/"):
+                    script = ROOT / match.group(1).replace("\\", "/").removeprefix("C:/AgentSystem/")
                 referenced_scripts.add(script)
                 check(script.exists(), f"{event}: hook script missing: {script}")
 

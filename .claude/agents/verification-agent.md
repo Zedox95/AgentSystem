@@ -26,8 +26,7 @@ criteria, that alone is already a `FAIL`.
 ## Approach
 
 1. **Re-derive the goal.** What did the user actually want? Not: what was implemented?
-2. **Measure objectively.** Read the real system state yourself, again. Never rely on the output
-   presented to you — reproduce it.
+2. **Measure objectively.** Independently reproduce critical acceptance checks against the real state. Reuse immutable raw artifacts for unchanged inputs when their origin is established. Investigate gaps and side effects rather than rerunning every unaffected check.
 3. **Check negatively.** Look for what the executor did not test: side effects, configuration
    precedence, permissions, new errors in logs, broken neighboring functionality, security
    regressions, missing negative tests.
@@ -55,5 +54,5 @@ Provide exactly one judgment:
 With insufficient evidence, the verdict is `INCONCLUSIVE` or `FAIL` — **never** `PASS`. When in
 doubt, do not pass it.
 
-Respond in the format from AGENTS.md section 24, and under `EVIDENCE` state the actual commands
+Respond in the format from the shared policy Result Format, and under `EVIDENCE` state the actual commands
 and their raw output, under `RISKS` any remaining uncertainty.

@@ -1,107 +1,12 @@
 # AgentSystem
 
-A vendor-neutral control plane for AI coding agents (Claude Code,
-Codex) on a personal Windows machine: a system policy, six
-subagents, twelve custom skills, nine hooks, and a small Python control
-plane (Ledger, Locks, Policy Guard, Experience Store).
+A reusable, provider-neutral workflow core for reliable, evidence-backed work with Claude Code, Codex and ChatGPT. Each user has their own configuration and Obsidian knowledge; each coherent task has its own session checkpoint.
 
-The core principle: **A task is never successful just because an agent
-says so.** Real system state and objective tests outrank any
-agent statement — for that there are risk classes, a Task Contract, Resource
-Locks, a transaction principle with backup/rollback, and an independent,
-read-only verification role.
+The system combines concise rules, 17 task-specific skills, seven specialist roles, deterministic lifecycle adapters and a guarded Obsidian memory path. Sources and tests provide evidence; neither a successful command nor several agreeing agents guarantees correctness.
 
-This is the published **core** of a larger, private setup: everything
-here is reusable without being tied to a specific machine or
-specific infrastructure. Operator-specific runtime state (Ledger
-contents, locks, backups, concrete server/network configuration) is
-deliberately not part of this repo.
+## Install on another computer
 
-## Getting started
-
-| Document | Content |
-|---|---|
-| [User guide](docs/benutzeranleitung.md) | How to give a task and what happens next |
-| [System documentation](docs/systemdokumentation.md) | Architecture and origins |
-| [Second Brain](docs/second-brain-architecture.md) | Learning knowledge management with source attribution |
-| [Global provider integration](docs/global-provider-integration.md) | Claude Code, Codex, ChatGPT |
-| [Known issues](docs/known-issues.md) | Measured findings with workarounds |
-| [AGENTS.md](AGENTS.md) | The binding, vendor-neutral system policy — 24 sections |
-
-## Structure
-
-```
-AGENTS.md              vendor-neutral system policy (priorities, risk classes,
-                        Task Contract, locks, verification, secrets, learning)
-CLAUDE.md               Claude Code-specific addition, imports AGENTS.md
-.claude/
-  agents/                6 subagents (Windows, infrastructure, browser, gaming,
-                          implementation, verification)
-  skills/                 12 custom skills
-  hooks/                  9 hook scripts (SessionStart, PreToolUse, ConfigChange, ...)
-  settings.json            permissions and hook wiring
-bin/
-  agentsys/                Ledger, Locks, Policy, Fingerprint, Experience, Knowledge, ...
-  agentctl.py              control plane command line
-adapters/
-  ufo/                     Windows UI automation (UFO²) — CLI + MCP
-  playwright/              browser automation — CLI + MCP
-  memory/                  MCP access to managed, source-attributed knowledge
-schemas/                   JSON schemas for Knowledge/Context/Eval/Metric
-evals/                     eval cases for regression testing
-tests/                     test suites, run-all.py
-docs/
-```
-
-## Second model as control and handoff
-
-Codex is connected as a second frontier model, not as a replacement when
-quota runs out. From Claude Code:
-
-- `/codex:rescue` — limited delegation of an investigation or a fix,
-  Claude remains lead
-- `/codex:review` — independent Codex review of a change
-- `/codex:transfer` — full session handoff: goal, prior
-  history, and context transfer to a Codex thread in one command, which is
-  then resumed with `codex resume <thread-id>`
-
-None of these steps sets an API key — everything runs via the locally
-logged-in Codex CLI. Details in AGENTS.md section 4 and in
-[System documentation](docs/systemdokumentation.md).
-
-## Second Brain: learning, source-attributed knowledge
-
-The system doesn't simply remember chat history. New insights go
-through a controlled single-writer path before they count as fact:
-
-```
-Observation -> Knowledge Candidate -> Archivist review -> managed note
-                                              |
-                  Read-only search -> Context Builder -> source package
-```
-
-- Every fact starts as a `pending` candidate with source, file hash, and
-  confidence level — never directly as confirmed.
-- Only a reviewed approval (`knowledge approve`) writes to the
-  knowledge store; it requires an open task, an entity lock, and, for
-  existing notes, the currently measured hash.
-- Weaker sources never override stronger ones — older values remain
-  as `superseded` rather than being deleted.
-- A Knowledge Review is mandatory before every task completion: `none`,
-  `captured`, or `deferred`, documented in the Ledger.
-
-Details, CLI commands, and safety boundaries in
-[Second Brain](docs/second-brain-architecture.md).
-
-## Prerequisites
-
-- Windows with [Claude Code](https://claude.com/product/claude-code) and/or
-  [Codex CLI](https://github.com/openai/codex)
-- Python 3.11+, Node.js 20+
-- Optional: [UFO²](https://github.com/microsoft/UFO) for Windows GUI
-  automation, [Playwright](https://playwright.dev/) for browser tasks
-
-## Installation
+Use a fresh checkout and that person's own subscriptions, logins and vault:
 
 ```powershell
 git clone https://github.com/Zedox95/AgentSystem.git
@@ -109,60 +14,80 @@ cd AgentSystem
 .\setup.ps1
 ```
 
-`setup.ps1` adjusts the hard-coded paths to the actual clone location
-(regardless of where you clone) and asks, in order:
+Python 3.11+ is required. Claude Code/Codex and Obsidian are installed separately. Node.js and Playwright are optional. No paid LLM API, credit fallback or global permission bypass is configured.
 
-- **Second Brain / Obsidian** — provide an existing vault path, or leave
-  it empty to have a new vault created with the expected folder structure.
-  No → the `shared-memory` MCP server is removed from `.mcp.json`.
-- **UFO² (Windows GUI automation)** — path to an existing
-  UFO² installation. No → the `ufo` MCP server is removed, the skill
-  `ufo-windows` remains unused.
-- **Playwright (browser automation)** — if yes, the script runs
-  `npm install` and downloads Chromium. No → the `playwright`
-  entry is removed.
-- **Codex connection** — if yes, you're given the three necessary steps in
-  the terminal (`/plugin marketplace add`, `/plugin install`,
-  `/codex:setup`); the script itself does not install Claude Code plugins.
-
-Answering all four questions with No/Enter yields a working system
-without any of the optional components. It also works non-interactively, e.g.
-for scripts:
-
+Alternatively:
 ```powershell
-.\setup.ps1 -VaultPath 'D:\Notizen\Vault' -InstallPlaywright:$true -SkipUfo -SkipCodexHint
-```
-
-**What the installer cannot handle for you** — policy or technical boundary,
-not an oversight:
-
-1. **Perform logins yourself:** Claude Code with the Anthropic account,
-   Codex CLI with ChatGPT (`authMethod: chatgpt`), and if applicable `gh auth login` with
-   GitHub. All browser/device-code logins — no tool in this system
-   types credentials.
-2. **Never set LLM API keys.** `.claude/settings.json` deliberately blocks
-   `ANTHROPIC_API_KEY`/`OPENAI_API_KEY`/`CODEX_API_KEY` — only the
-   subscriptions are needed (Claude Pro/Code, ChatGPT Plus), no pay-as-you-go API.
-3. **Confirm project trust once**, when Claude Code or the
-   Codex plugin asks about hooks/`settings.json` on first open.
-4. Credentials for web interfaces addressed by the `browser-admin` skill —
-   you always type these yourself.
-
-Then:
-
-```bash
-python bin/agentctl.py status
+python bin/setup_agent.py install --vault "C:/Users/YourName/Documents/Obsidian Vault"
+python bin/setup_agent.py doctor
 python tests/run-all.py
 ```
 
-Open Claude Code or Codex with this directory as the project directory —
-rules, agents, skills, and hooks only apply there. Details in the
-[User guide](docs/benutzeranleitung.md) and in
-[Global provider integration](docs/global-provider-integration.md).
+Setup is repository-local, preserves unrelated settings, makes private rollback backups, and is idempotent for unchanged inputs. Open this checkout as a trusted project. Review Codex hooks with /hooks. Configuration checks do not prove hook activation in a client.
+
+- [German installation guide](docs/installation-de.md)
+- [Installation, sessions and rollback](docs/portable-sessions.md)
+- [ChatGPT instructions and memory connection](docs/chatgpt-setup.md)
+- [Shared policy](AGENTS.md)
+
+## Normal workflow
+
+Ask follow-up questions within the same coherent task. Start a separate session for unrelated work. Relevant managed Obsidian knowledge is shared across sessions; checkpoints and execution ownership are separate.
+
+The main agent handles ordinary questions. Skills load only when relevant. Delegate bounded research, specialist implementation or required independent verification when useful; normally no more than two additional agents. One writer per resource.
+
+Source-backed answers read the original sources. Technical changes inspect the actual environment, set measurable criteria, make the smallest sufficient change, run targeted tests and receive the verification required by their risk class. Valid evidence is reused when inputs have not changed. No chain of agents reviewing each other's prose is required.
+
+## Shared Obsidian memory
+
+The local stdio MCP server is adapters/memory/memory_mcp.py. It offers managed search, readback, pending candidates, guarded verified capture and task-review status. It does not expose arbitrary file or shell access.
+
+Each fact retains source, confidence, status and dates. New information goes through candidates and the Archivist path; weaker evidence does not silently replace stronger evidence. Automatic search reads managed metadata and facts, not private prose outside the managed block.
+
+Important preferences, decisions and verified outcomes are captured when the assistant invokes the connected workflow. A hook alone cannot reliably decide the meaning or importance of every message. ChatGPT needs its own supported plugin/MCP connection; a local Codex installation does not connect every cloud chat.
+
+Existing ChatGPT memory lists and conversation exports can be previewed and staged:
+```powershell
+python bin/assistantctl.py import-memory --file memories.json
+python bin/assistantctl.py import-memory --file memories.json --stage
+```
+Categories are suggestions. Imports stay pending and unverified; only user-authored conversation text is considered. This is not a full live export/sync of internal ChatGPT memory.
+
+## Checkpoints and learning
+
+```powershell
+python bin/assistantctl.py plan --prompt "Compare current backup approaches with sources"
+python bin/assistantctl.py checkpoint save --session-id "<real host ID>" --file handoff.json
+python bin/assistantctl.py checkpoint show --session-id "<real host ID>"
+```
+
+Save the goal, decisions, evidence references, unresolved criteria and next step. Lifecycle hooks preserve an existing structured handoff; they do not scrape transcripts or invent missing goals.
+
+Learning uses measured experience and tested skill candidates. Proposals are not silently activated, and model weights are not changed. See [Second Brain](docs/second-brain-architecture.md).
+
+## What is and is not configured
+
+| Capability | This repository |
+|---|---|
+| Claude project hooks | Configured by setup; client activation still needs a trusted session |
+| Codex skills, agent profiles and lifecycle hooks | Generated by setup; exact hook definitions need trust review |
+| ChatGPT guidance | Copyable portable core and connection instructions |
+| Local managed Obsidian access | Functional stdio MCP; tested with an isolated vault |
+| Always-on cloud access | Requires separately deployed/authenticated hosting or a supported connection |
+| Complete automatic ChatGPT-memory sync | Not claimed or provided |
+| Enforced read-only Codex verification | Use a separate root read-only session when required; a custom-agent prompt does not enforce it |
+
+## Tests and rollback
+
+Portable tests include fresh installs, two independent profiles, repeated setup, configuration preservation, rollback, session isolation, import deduplication, secret handling, memory relevance and an actual isolated MCP capture/readback.
+
+`python tests/run-all.py --integration` additionally exercises optional installed desktop/browser adapters. Live integration requires that user's configured tooling and environment. GitHub Actions runs the portable suite on Windows with Python 3.11 and 3.13.
+
+Use the backup path reported by setup:
+`python bin/setup_agent.py rollback --backup "<manifest path>"`
+
+No private notes, account credentials or runtime state belong in Git. See .gitignore and the shared Secrets policy.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). All files in this repo are original work.
-The private overall system additionally incorporates a few externally
-sourced third-party skills (with their own license and provenance) — these are
-deliberately not part of this publication.
+MIT. The published core contains original repository code; optional third-party tools retain their own licenses.

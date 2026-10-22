@@ -1,8 +1,10 @@
 ---
 name: playwright-web
 description: Operates web UIs via the Playwright CLI - read accessibility snapshots, click, fill fields, read text, check HTTP status, and run step sequences - localizing via roles and names instead of pixel coordinates. Use for router web UIs, Proxmox and Pterodactyl panels, forms, and browser diagnostics, when no API serves the purpose more reliably.
-allowed-tools: Bash(node C:\AgentSystem\adapters\playwright\pwctl.mjs *), Read, Grep, Glob
 ---
+
+Run repository-relative commands from the actual checkout root; inspect configured adapter paths before use.
+
 
 # Web UIs via pwctl
 
@@ -19,7 +21,7 @@ so the user can log in themselves. The session then persists.
 
 Rule of thumb: **explore and log in via MCP, repeat via the CLI.**
 
-The profile contains cookies and is a secret per AGENTS.md section 20 —
+The profile contains cookies and is a secret per the shared policy Secrets —
 outside version control, never logged, never copied into a report.
 
 ## First: is there an API?
@@ -31,7 +33,7 @@ full-featured APIs — there the browser is almost always the wrong choice.
 ## Invocation
 
 ```bash
-node C:\AgentSystem\adapters\playwright\pwctl.mjs <command> --url <address>
+node adapters/playwright/pwctl.mjs <command> --url <address>
 ```
 
 Output is always JSON. Each call starts its own browser and closes it again
@@ -108,7 +110,7 @@ success.
 
 `--profile <name>` uses a persistent browser context under
 `state/browser-profiles/<name>`. It contains cookies and session data and is
-therefore a **secret** per AGENTS.md section 20: outside version control,
+therefore a **secret** per the shared policy Secrets: outside version control,
 never logged, never copied into a report.
 
 **You do not enter credentials yourself.** If a UI requires a login, report
@@ -137,5 +139,5 @@ workflows.
 ## Recording experience
 
 ```bash
-python C:\AgentSystem\bin\agentctl.py exp record --key browser.<task> --method "pwctl:<command>" --success --duration <ms> --agent browser-agent
+python bin/agentctl.py exp record --key browser.<task> --method "pwctl:<command>" --success --duration <ms> --agent browser-agent
 ```

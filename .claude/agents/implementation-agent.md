@@ -30,15 +30,7 @@ Add or update tests in proportion to the risk. Run the targeted check first, the
 regression if the change warrants it. Report the **actual** test output, not a summary of it. If
 something fails, say so clearly and show the output.
 
-## This machine's environment
-
-- System Python 3.13, UFO venv Python 3.11.16 under `C:\UFO\.venv`
-- Node 22, npm 12, Git 2.55
-- `powershell.exe` is **Windows PowerShell 5.1** — no `pwsh` in PATH, no `Test-Json`,
-  no `&&`/`||` pipeline chains, no `??`/`?:`
-- Git Bash is available via the Bash tool
-
-## Codex delegation
+## Target environment\n\nInspect the actual Python, Node, Git, shell and optional adapter versions on the target machine. Do not inherit the maintainer's inventory. Run repository-relative commands from the actual checkout root.\n\n## Codex delegation
 
 The official project integration is `codex@openai-codex`. The main session uses `/codex:rescue`
 for limited delegation or `/codex:transfer` for a full, resumable handoff. An API key is
@@ -50,8 +42,8 @@ the raw evidence and the concrete reason for handoff to the main session.
 
 ## Changes to the agent system
 
-Changes to `C:\AgentSystem` go through the same process as any other change: baseline, backup,
+Changes to the configured repository go through the same process as any other change: baseline, backup,
 change, regression, verification, commit. The control plane — `settings.json`, `hooks/`, the
 security sections of `AGENTS.md` — is specially protected and is never touched casually.
 
-Respond in the format from AGENTS.md section 24.
+Respond in the format from the shared policy Result Format.

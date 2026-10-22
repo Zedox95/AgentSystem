@@ -27,7 +27,7 @@ MIN_LENGTH = 25
 
 def main() -> None:
     data = hooklib.read_input()
-    prompt = str(data.get("user_input") or "").strip()
+    prompt = str(data.get("prompt") or data.get("user_input") or "").strip()
 
     if len(prompt) < MIN_LENGTH:
         hooklib.emit_nothing()
@@ -52,9 +52,8 @@ def main() -> None:
 
     if result.agent:
         lines.append(
-            f"`{result.agent}` would be responsible. On delegation, set the model per "
-            f"call to `{result.model}` — that is where the routing "
-            "actually applies."
+            f"`{result.agent}` is a specialist candidate. Delegate only a bounded task "
+            f"when useful; resolve capability tier `{result.model}` to an available subscription model."
         )
 
     if result.risk in ("R2", "R3"):
@@ -67,10 +66,9 @@ def main() -> None:
 
     if result.needs_stronger_model:
         lines.append(
-            "If this session is running on the weaker model: either delegate "
-            "the reasoning-intensive parts to a subagent with `model: opus`, "
-            "or suggest a session switch to the user. "
-            "The classification alone is not a reason to switch unprompted."
+            "Use sufficient reasoning effort for the task. A separate agent is optional, "
+            "not a default consequence of this advisory classification. "
+            "Do not select unavailable models or configure a paid API fallback."
         )
 
     lines.append(
